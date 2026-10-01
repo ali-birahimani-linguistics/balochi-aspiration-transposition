@@ -1,0 +1,2482 @@
+---
+title: "Scripts_final"
+author: "Ali H. Birahimani"
+date: "2025-06-15"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+summary(cars)
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+```{r loading analysis packages}
+
+library(readr)
+library(pacman)
+library(tidyverse)
+library(dplyr)
+library(ggplot2)
+library(tidyr)
+library(mixtools)
+library(ggdist)
+library(ggrepel)
+library(data.table)
+library(plotly)
+
+```
+
+
+
+```{r loading dataset 1}
+
+library(readr)
+participants_data_wrangled_further <- read_csv("participants_data_wrangled_further.csv", 
+    na = "empty")
+View(participants_data_wrangled_further)
+
+```
+
+ 
+```{r wrangling -- dataset 1}
+
+##We create a new object in data as a copy of the data in excel file.
+data0 <- 
+  participants_data_wrangled_further
+
+
+##We simplify 'label' names by removing the hyphens (that were needed in the processing in PRAAT).
+data0$label <- gsub('___', '', 
+                          data0$label)
+
+data0$label <- gsub('__', '', 
+                    data0$label)
+
+data0$label <- gsub('_', '', 
+                    data0$label)
+
+#view(data0)
+
+
+##We convert variable 'target' to factor.
+data0$target <- factor(data0$target)
+
+##We convert variable 'onset aspiration' to factor.
+data0$aspiration <- factor(data0$aspiration)
+
+##We convert variable 'transposition' to factor.
+data0$transposition <- factor(data0$transposition)
+
+##We convert variable 'analysis' to factor.
+data0$analysis_1 <- factor(data0$analysis_1)
+data0$analysis_2 <- factor(data0$analysis_2)
+data0$analysis_3 <- factor(data0$analysis_3)
+data0$analysis_4 <- factor(data0$analysis_4)
+data0$analysis_5 <- factor(data0$analysis_5)
+
+##We convert variable 'vocoid' to factor.
+data0$vocoid <- factor(data0$vocoid)
+
+
+##Finally, we filter out many of the columns we don't need, creating a new set.
+##We also modify the units in the values of some of the columns.
+data1 <-  
+  data0 %>%
+  select(participant, label, target, 
+         aspiration, transposition, 
+         vocalic.segment,
+         analysis_1, analysis_2, analysis_3, analysis_4, analysis_5,
+         hlhzc_1, hlhzc_2, hlhzc_3, hlhzc_4, hlhzc_5,  
+         hlaec_1, hlaec_2, hlaec_3, hlaec_4, hlaec_5,
+         cpp_1, cpp_2, cpp_3, cpp_4, cpp_5,
+         pitch_1, pitch_2, pitch_3, pitch_4, pitch_5,
+         final, closure.duration, closure.offset,
+         offset.cog, offset.sd,
+         conson, conson.int,
+         vocoid, vocoid.int) %>%
+  mutate(vocalic.segment = vocalic.segment * 1000,
+         final = final * 1000,
+         closure.duration = closure.duration * 1000,
+         closure.offset = closure.offset * 1000,
+         conson.int = conson.int * 1000,
+         vocoid.int = vocoid.int * 1000)
+
+
+##The bit about renaming the three target values: 
+##If 'target' is NA, that becomes "Aspirate set II"; if 1, that becomes the "Experimental set"; otherwise, "Unaspirate set II". 
+data1 <- 
+  data1 %>%
+mutate(target = ifelse(is.na(target), "Aspirate set II",
+                         ifelse(target == "1", "Experimental set", "Unaspirate set II")))
+
+#view(data1)
+
+
+##This is to filter out the pitch_1 = 0, pitch_5 = 0 and hlhzc_1 = 0, hlhzc_5 = 0 values. (Or was it?)
+data2 <- 
+  data1 %>%
+    mutate(across(c(pitch_1, hlhzc_1), na_if, 0)) %>%
+    mutate(across(c(pitch_5, hlhzc_5), na_if, 0))
+
+view(data2)
+
+```
+ 
+
+
+```{r loading dataset 2}
+
+library(readr)
+participants_data_wrangled_further_supplement <- read_csv("participants_data_wrangled_further_supplement.csv", 
+    na = "empty")
+View(participants_data_wrangled_further_supplement)
+
+```
+
+
+```{r wrangling -- dataset 2}
+
+##We go through the same processes we did using the other dataset.
+
+##We create a copy of the data.
+datax <- 
+  participants_data_wrangled_further_supplement
+
+#We simplify participant names too.
+datax$participant  <- gsub('___2022', '', 
+                          datax$participant)
+
+##Simplify 'label' names by removing the hyphens.
+datax$label <- gsub('___', '', 
+                          datax$label)
+
+datax$label <- gsub('__', '', 
+                    datax$label)
+
+datax$label <- gsub('_', '', 
+                    datax$label)
+
+#view(datax)
+
+
+##Convert variable 'target' to factor.
+datax$target <- factor(datax$target)
+
+##Convert variable 'analysis' to factor.
+datax$analysis_1 <- factor(datax$analysis_1)
+datax$analysis_2 <- factor(datax$analysis_2)
+datax$analysis_3 <- factor(datax$analysis_3)
+datax$analysis_4 <- factor(datax$analysis_4)
+datax$analysis_5 <- factor(datax$analysis_5)
+
+
+##Again, the same steps of filtering out many of the columns and modifying the units.
+##In addition, we remove some of the extra 'labels' we do not need. 
+datay <- 
+  datax %>%
+  select(participant, label, target, 
+         aspiration, transposition,
+         vocalic.segment,
+         analysis_1, analysis_2, analysis_3, analysis_4, analysis_5,
+         hlhzc_1, hlhzc_2, hlhzc_3, hlhzc_4, hlhzc_5,  
+         hlaec_1, hlaec_2, hlaec_3, hlaec_4, hlaec_5,
+         cpp_1, cpp_2, cpp_3, cpp_4, cpp_5,
+         pitch_1, pitch_2, pitch_3, pitch_4, pitch_5,
+         final, closure.duration, closure.offset,
+         offset.cog, offset.sd,
+         conson, conson.int,
+         vocoid, vocoid.int) %>%
+  mutate(vocalic.segment = vocalic.segment * 1000,
+         final = final * 1000,
+         closure.duration = closure.duration * 1000,
+         closure.offset = closure.offset * 1000,
+         conson.int = conson.int * 1000,
+         vocoid.int = vocoid.int * 1000) %>%
+  filter(!label == c("daa")) %>%
+  filter(!label == c("jan"))
+
+#view(datay)
+
+
+##Yet again, the part about renaming the target values:
+##What was "bho", becomes "Aspirate set I" and the rest become "Unaspirate set I".
+datay <- 
+  datay %>% 
+  mutate(target = ifelse(label == "bho", "Aspirate set I", "Unaspirate set I"))
+
+#view(datay)
+
+
+##And again, the filtering out part. (Or was it?)
+dataz <- 
+  datay %>%
+    mutate(across(c(pitch_1, hlhzc_1), na_if, 0)) %>%
+    mutate(across(c(pitch_5, hlhzc_5), na_if, 0))
+
+view(dataz)
+
+```
+
+
+
+```{r renaming 'label' values}
+
+##Let us bind the two datasets first.
+data2z <- 
+  rbind(data2, dataz)
+
+#view(data2z)
+
+
+##The renaming part.
+data2z['label'][data2z['label'] == "bakh"] <- "bakh-"
+
+data2z['label'][data2z['label'] == "band"] <- "band-"
+
+data2z['label'][data2z['label'] == "baxsh"] <- "baxsh-"
+
+data2z['label'][data2z['label'] == "bho"] <- "bhoren-"
+
+data2z['label'][data2z['label'] == "bii"] <- "bii-"
+
+data2z['label'][data2z['label'] == "bu"] <- "bur-"
+
+data2z['label'][data2z['label'] == "day"] <- "day-"
+
+data2z['label'][data2z['label'] == "dosh"] <- "dosh-"
+
+data2z['label'][data2z['label'] == "dukh"] <- "dukh-"
+
+data2z['label'][data2z['label'] == "duph"] <- "duph-"
+
+data2z['label'][data2z['label'] == "jakh"] <- "jakh-"
+
+data2z['label'][data2z['label'] == "juph"] <- "juph-"
+
+data2z['label'][data2z['label'] == "juz"] <- "juz-"
+
+view(data2z)
+
+```
+
+
+
+
+
+
+
+
+###We analyse first the outcomes of the production data. 
+
+
+```{r wrangling for 'transition type' analysis}
+
+##Let us begin by creating a subset by filtering the "experimental set" tokens, since we are to focus on the C2H-C3 transition.
+data3_experimental <-  
+  data2z %>%
+  filter(target == "Experimental set")
+
+#view(data3_experimental)
+
+
+##We change the name of the column 'target' to 'transition'.
+colnames(data3_experimental)[3] <- "transition"
+
+#view(data3_experimental)
+
+
+##We now create subsets of types of transitions.
+
+##The first of these subsets is of "vocoid" type.
+data3_experimental_vocoid <-  
+  data3_experimental %>%
+  filter(vocoid == 1) %>%
+  mutate(transition = recode(transition, "Experimental set" = "Vocoid type"))
+
+#view(data3_experimental_vocoid)
+
+##The next in line is of the "formation" type and for this we do either of the C2 tokens separately.
+##For this, we specify the value of the duration as larger than 29 ms for a velar C2 and 24 ms for a bilabial C2 (based upon the shortest duration for pre-vocalic aspiration).
+data3_experimental_formation_k <-  
+  data3_experimental %>%
+  filter(is.na(vocoid)) %>%
+  filter(label %in%  c("bakh-", "dukh-", "jakh-"), closure.offset >= 29) %>%
+  mutate(transition = recode(transition, "Experimental set" = "Formation type"))
+
+#view(data3_experimental_formation_k)
+
+data3_experimental_formation_p <-  
+  data3_experimental %>%
+  filter(is.na(vocoid)) %>%
+  filter(label %in%  c("duph-", "juph-"), closure.offset >= 24) %>%
+  mutate(transition = recode(transition, "Experimental set" = "Formation type"))
+
+#view(data3_experimental_formation_p)
+
+
+##Then there is the "zero transition" type. 
+##This one still has a duration and that can be obtained used the value of 'final' and 'closure.duration'.
+data3_experimental_zero_transition <-  
+  data3_experimental %>%
+  filter(closure.offset == 0) %>%
+  mutate(transition = recode(transition, "Experimental set" = "Zero offset type")) %>%
+  mutate(closure.offset = final - closure.duration)
+
+#view(data3_experimental_zero_transition)
+
+
+##Now comes the "minimal offset transition" type. 
+## This is, in some ways, the mirror of "formation" type.
+data3_experimental_minimal_offset_k <-  
+  data3_experimental %>%
+  filter(!closure.offset == 0) %>%
+  filter(is.na(vocoid)) %>%
+  filter(label %in%  c("bakh-", "dukh-", "jakh-"), closure.offset < 29) %>%
+  mutate(transition = recode(transition, "Experimental set" = "Minimal offset type"))
+
+#view(data3_experimental_minimal_offset_k)
+
+data3_experimental_minimal_offset_p <-  
+  data3_experimental %>%
+  filter(!closure.offset == 0) %>%
+  filter(is.na(vocoid)) %>%
+  filter(label %in%  c("duph-", "juph-"), closure.offset < 24) %>%
+  mutate(transition = recode(transition, "Experimental set" = "Minimal offset type"))
+
+#view(data3_experimental_minimal_offset_p)
+
+
+##Finally, there is the subset of "Unanalysed" tokens. 
+##These tokens were registered with "NA" value.
+data3_experimental_unanalysed <-  
+  data3_experimental %>%
+  filter(is.na(closure.offset)) %>%
+  mutate(transition = recode(transition, "Experimental set" = "Unanalysed"))
+
+#view(data3_experimental_unanalysed)
+
+
+##We now bind all the subsets.
+data3_experimental_transitions <- 
+  rbind(data3_experimental_formation_k, data3_experimental_formation_p, data3_experimental_vocoid, data3_experimental_zero_transition, data3_experimental_minimal_offset_k, data3_experimental_minimal_offset_p, data3_experimental_unanalysed)
+
+view(data3_experimental_transitions)
+
+```
+
+
+
+```{r visualisation of `C2H-C3 transition type` frequency by factors}
+
+##We have two factors to analyse the C2H-C3 transition types by, 'label'/'item' and 'participant'.
+##Let us summarize for 'label' first. 
+data3_experimental_transitions_label <-  
+  data3_experimental_transitions %>%
+  group_by(transition, label) %>% 
+  summarise(number = n())
+
+#view(data3_experimental_transitions_label)
+
+
+##Here we make a frequency plot by 'item' type. 
+#my_plot <-
+  ggplot(data = data3_experimental_transitions_label,
+         aes(x = label,
+             y = number,
+             fill = factor(transition, 
+                           levels = c("Formation type", "Vocoid type", "Zero offset type", "Minimal offset type", "Unanalysed"))),
+         show.legend = FALSE) +
+  geom_col(position = position_dodge()) +
+  scale_y_continuous(expand = c(0, 2.5), 
+                     breaks = (c(0, 10, 20, 30, 40, 50, 60, 70, 80)), 
+                     limits = c(0, 80)) +
+  scale_fill_discrete(labels = c("Formation", "Vocoid", "Zero offset", "Minimal offset", "Unanalysed")) +
+  labs(x = "\n Item",
+     y = "Token frequency\n",
+     title = expression("Frequency of C"[2]*""^H*"-C"[3]*" transition type by item"),
+     fill = "Type of transition\n")
+
+  
+
+##We now summarize for 'participant'. 
+data3_experimental_transitions_participant <-  
+  data3_experimental_transitions %>%
+  group_by(transition, participant) %>% 
+  summarise(number = n())
+
+#view(data3_experimental_transitions_participant)
+
+
+##Here we make a frequency plot by 'participant' type. 
+#my_plot <-
+  ggplot(data = data3_experimental_transitions_participant,
+         aes(x = participant,
+             y = number,
+             fill = factor(transition, 
+                           levels = c("Formation type", "Vocoid type", "Zero offset type", "Minimal offset type", "Unanalysed"))),
+         show.legend = FALSE) +
+  geom_bar(position = "stack", stat = "identity") +
+  scale_x_discrete(limits = c("1", "2", "3", "4", "6", "8", "9", "10", "11",
+                              "12", "13", "14", "15", "16", "17", "18", "19",
+                              "20", "21", "22", "23", "24", "25", "26", "27",
+                              "28", "29", "30", "31", "32", "33", "34", "35",
+                              "36", "37")) +
+  scale_y_continuous(expand = c(0, 0.5), 
+                     breaks = (c(0, 2, 4, 6, 8, 10, 12, 14, 16, 18)), 
+                     limits = c(0, 18)) +
+  scale_fill_discrete(labels = c("Formation", "Vocoid", "Zero offset", "Minimal offset", "Unanalysed")) +
+  labs(x = "\n Participant",
+     y = "Token frequency\n",
+     title = expression("Frequency of C"[2]*""^H*"-C"[3]*" transition type by participant"),
+     fill = "Type of transition\n")
+
+
+```
+
+
+ggsave("C:/Users/ALI/OneDrive/Documents/2 frequency_item_transition_type.png", my_plot, width = 9, height = 6, bg = "white")
+
+ggsave("C:/Users/ALI/OneDrive/Documents/3 frequency_participant_transition_type.png", my_plot, width = 9, height = 6, bg = "white")
+
+
+
+```{r visualisation of `C2H-C3 transition type` and `duration` by factors}
+
+#view(data3_experimental_transitions)
+
+##By the same factors, 'label'/'item' and 'participant', we analyse the C2H-C3 transition types for vowel 'duration'. 
+##Again, we summarize for 'label' first.
+data3_experimental_transitions_label_durations_agg <-  
+  data3_experimental_transitions %>%
+  group_by(transition, label) %>% 
+  summarise(number = n(),
+            mean.vocalic.segment = mean(vocalic.segment, na.rm = T),
+            mean.closure.offset = mean(closure.offset, na.rm = T))
+
+#view(data3_experimental_transitions_label_durations_agg)
+
+
+##This is the scatterplot of durations of tokens by 'label' type.
+#my_plot <-
+data3_experimental_transitions %>% 
+  ggplot(aes(x = label,
+             y = closure.offset,
+             colour = factor(transition, 
+                           levels = c("Formation type", "Vocoid type", "Zero offset type", "Minimal offset type", "Unanalysed")))) +
+  # add raw data
+  geom_point(aes(),
+             size = 2,
+             alpha = 0.5) +
+  # add model fit
+  geom_point(data = data3_experimental_transitions_label_durations_agg,
+             aes(y = mean.closure.offset,
+                 fill = factor(transition, 
+                           levels = c("Formation type", "Vocoid type", "Zero offset type", "Minimal offset type", "Unanalysed"))),
+             size = 4,
+             pch = 21,
+             color = "black",
+             show.legend = FALSE) +
+  scale_y_continuous(expand = c(0, 5), 
+                     breaks = (c(0, 20, 40, 60, 80, 100, 120, 140)), 
+                     limits = c(0, 140)) +
+  scale_colour_discrete(labels = c("Formation", "Vocoid", "Zero offset", "Minimal offset", "Unanalysed")) +
+  labs(x = "\n Item",
+       y = "Offset duration (ms)\n",
+       title = expression("Duration of C"[2]*""^H*"-C"[3]*" transition type by item"),
+       colour = "Type of transition\n")
+
+
+
+##We now summarize 'durations' for 'participant'.
+data3_experimental_transitions_participant_durations_agg <-  
+  data3_experimental_transitions %>%
+  group_by(transition, participant) %>% 
+  summarise(number = n(),
+            mean.vocalic.segment = mean(vocalic.segment, na.rm = T),
+            mean.closure.offset = mean(closure.offset, na.rm = T))
+
+#view(data3_experimental_transitions_participant_durations_agg)
+
+
+##The scatterplot of token durations by 'participant' type.
+#my_plot <-
+data3_experimental_transitions %>% 
+  ggplot(aes(x = participant,
+             y = closure.offset,
+             colour = factor(transition, 
+                           levels = c("Formation type", "Vocoid type", "Zero offset type", "Minimal offset type", "Unanalysed")))) +
+  # add raw data
+  geom_point(aes(),
+             size = 1,
+             alpha = 0.7) +
+  # add model fit
+  geom_point(data = data3_experimental_transitions_participant_durations_agg,
+             aes(y = mean.closure.offset,
+                 fill = factor(transition, 
+                           levels = c("Formation type", "Vocoid type", "Zero offset type", "Minimal offset type", "Unanalysed"))),
+             size = 2,
+             pch = 21,
+             color = "black",
+             show.legend = FALSE) +
+  scale_x_discrete(limits = c("1", "2", "3", "4", "6", "8", "9", "10", "11",
+                              "12", "13", "14", "15", "16", "17", "18", "19",
+                              "20", "21", "22", "23", "24", "25", "26", "27",
+                              "28", "29", "30", "31", "32", "33", "34", "35",
+                              "36", "37")) +
+  scale_y_continuous(expand = c(0, 5), 
+                     breaks = (c(0, 20, 40, 60, 80, 100, 120, 140)), 
+                     limits = c(0, 140)) +
+  scale_colour_discrete(labels = c("Formation", "Vocoid", "Zero offset", "Minimal offset", "Unanalysed")) +
+  labs(x = "\n Participant",
+       y = "Offset duration (ms)\n",
+       title = expression("Duration of C"[2]*""^H*"-C"[3]*" transition type by participant"),
+       colour = "Type of transition\n")
+
+```
+
+
+ggsave("C:/Users/ALI/OneDrive/Documents/4 duration_transition_item_type.png", my_plot, width = 9, height = 6, bg = "white")
+
+ggsave("C:/Users/ALI/OneDrive/Documents/5 duration_transition_participant_type.png", my_plot, width = 9, height = 6, bg = "white")
+
+
+
+```{r aggregating `experimental data` for C1V correlates by `transition type`}
+
+##Finally, we can turn to the acoustic output of correlates of voice quality over C1V, such as of H1-H2 or CPP, etc. For that we commence by aggregating H1-H2, H1-A3, and CPP with its five points over the vocalic interval and by individual transition types.
+
+##The first we need is the experimental data.
+#view(data3_experimental_transitions)
+
+##We group the data by transition and obtain the means.
+data3_experimental_transitions_agg <-  
+  data3_experimental_transitions %>%
+  group_by(transition) %>% 
+  summarise(number = n(),
+            mean.vocalic.segment = mean(vocalic.segment, na.rm = T),
+            mean.closure.offset = mean(closure.offset, na.rm = T),
+            mean.hlhzc_1 = mean(hlhzc_1, na.rm = T),
+            mean.hlhzc_2 = mean(hlhzc_2, na.rm = T),
+            mean.hlhzc_3 = mean(hlhzc_3, na.rm = T),
+            mean.hlhzc_4 = mean(hlhzc_4, na.rm = T),
+            mean.hlhzc_5 = mean(hlhzc_5, na.rm = T),
+            mean.hlaec_1 = mean(hlaec_1, na.rm = T),
+            mean.hlaec_2 = mean(hlaec_2, na.rm = T),
+            mean.hlaec_3 = mean(hlaec_3, na.rm = T),
+            mean.hlaec_4 = mean(hlaec_4, na.rm = T),
+            mean.hlaec_5 = mean(hlaec_5, na.rm = T),
+            mean.cpp_1 = mean(cpp_1, na.rm = T),
+            mean.cpp_2 = mean(cpp_2, na.rm = T),
+            mean.cpp_3 = mean(cpp_3, na.rm = T),
+            mean.cpp_4 = mean(cpp_4, na.rm = T),
+            mean.cpp_5 = mean(cpp_5, na.rm = T),
+            mean.pitch_1 = mean(pitch_1, na.rm = T),
+            mean.pitch_2 = mean(pitch_2, na.rm = T),
+            mean.pitch_3 = mean(pitch_3, na.rm = T),
+            mean.pitch_4 = mean(pitch_4, na.rm = T),
+            mean.pitch_5 = mean(pitch_5, na.rm = T))
+
+view(data3_experimental_transitions_agg)
+
+```
+
+
+
+```{r visualisation of H1-H2 over C1V by `transition type`}
+
+##The H1-H2 mean values over five vowel points which are distributed horizontally in the data, i.e. mean.hlhzc_1 to mean.hlhzc_5, now need to be wrangled so that these are distributed vertically.
+
+##Hence, wrangling to pivot longer. 
+data3_experimental_transitions_agg_hlhzc <-  
+  data3_experimental_transitions_agg %>% 
+  select(transition,
+         mean.hlhzc_1, mean.hlhzc_2, mean.hlhzc_3, mean.hlhzc_4, mean.hlhzc_5) %>%
+  pivot_longer(cols = c(mean.hlhzc_1, mean.hlhzc_2, mean.hlhzc_3, mean.hlhzc_4, mean.hlhzc_5),
+               names_to = 'point', 
+               values_to = 'mean.hlhzc')
+
+##We also remove the "mean.hlhzc_" from these respective points.
+data3_experimental_transitions_agg_hlhzc$point <- gsub('mean.hlhzc_', '', 
+                          data3_experimental_transitions_agg_hlhzc$point)
+
+#view(data3_experimental_transitions_agg_hlhzc)
+
+
+##Thus, we plot the five H1-H2 points over time.
+#my_plot <-
+ggplot(data = data3_experimental_transitions_agg_hlhzc, 
+       aes(x = point, 
+           y = mean.hlhzc,
+           colour = transition)) +
+  geom_point() + 
+  geom_path(aes(x = point, 
+                y = mean.hlhzc, 
+##               linewidth = number,
+                colour = transition,
+                group = transition),
+            alpha = 0.5) +
+#  scale_y_continuous(expand = c(0, 0.5), 
+#                     breaks = (c(0, 2, 4, 6, 8, 10, 12)), 
+#                     limits = c(0, 12)) +
+  scale_colour_discrete(labels = c("Formation", "Vocoid", "Zero offset", "Minimal offset", "Unanalysed")) +
+  labs(x = "\n Point over vowel",
+       y = "Mean H1⋆-H2⋆ slope (db)\n",
+       title = expression("Mean spectral balance over C"[1]*"V by C"[2]*""^H*"-C"[3]*" transition type"),
+       color = "Type of transition\n")
+
+```
+
+
+ggsave("C:/Users/ALI/OneDrive/Documents/6 h1-h2_transition_type.png", my_plot, width = 9, height = 6, bg = "white")
+
+
+
+```{r visualisation of H1-A3 over C1V by `transition type`}
+
+##The H1-A3 mean values which are distributed horizontally are wrangled so that they are distributed vertically.
+
+##Wrangling to pivot longer.
+data3_experimental_transitions_agg_hlaec <-  
+  data3_experimental_transitions_agg %>% 
+  select(transition,
+         mean.hlaec_1, mean.hlaec_2, mean.hlaec_3, mean.hlaec_4, mean.hlaec_5) %>%
+  pivot_longer(cols = c(mean.hlaec_1, mean.hlaec_2, mean.hlaec_3, mean.hlaec_4, mean.hlaec_5),
+               names_to = 'point', 
+               values_to = 'mean.hlaec')
+
+##This is to remove the "mean.hlaec_" bit.
+data3_experimental_transitions_agg_hlaec$point <- gsub('mean.hlaec_', '', 
+                          data3_experimental_transitions_agg_hlaec$point)
+
+#view(data3_experimental_transitions_agg_hlaec)
+
+
+##So we do the point plot of H1-A3 over time.
+#my_plot <-
+ggplot(data = data3_experimental_transitions_agg_hlaec, 
+       aes(x = point, 
+           y = mean.hlaec,
+           colour = transition)) +
+  geom_point() + 
+  geom_path(aes(x = point, 
+                y = mean.hlaec, 
+                colour = transition,
+  #             linewidth = number,
+                group = transition),
+            alpha = 0.5) +
+#  scale_y_continuous(expand = c(0, 2.0), 
+#                     breaks = (c(25, 30, 35, 40, 45)), 
+#                     limits = c(25, 45)) +
+  scale_colour_discrete(labels = c("Formation", "Vocoid", "Zero offset", "Minimal offset", "Unanalysed")) +
+  labs(x = "\n Point over vowel",
+       y = "Mean H1⋆-A3⋆ tilt (db)\n",
+       title = expression("Mean spectral balance over C"[1]*"V by C"[2]*""^H*"-C"[3]*" transition type"),
+       color = "Type of transition\n")
+
+```
+
+
+ggsave("C:/Users/ALI/OneDrive/Documents/7 h1-a3_transition_type.png", my_plot, width = 9, height = 6, bg = "white")
+
+
+
+```{r visualisation of CPP over C1V by `transition type`}
+
+##Wrangle to redistribute the horizontal H1-A3 mean values vertically.
+
+##Pivoting longer. 
+data3_experimental_transitions_agg_cpp <-  
+  data3_experimental_transitions_agg %>% 
+  select(transition,
+         mean.cpp_1, mean.cpp_2, mean.cpp_3, mean.cpp_4, mean.cpp_5) %>%
+  pivot_longer(cols = c(mean.cpp_1, mean.cpp_2, mean.cpp_3, mean.cpp_4, mean.cpp_5),
+               names_to = 'point', 
+               values_to = 'mean.cpp')
+
+##Removing "mean.cpp_".
+data3_experimental_transitions_agg_cpp$point <- gsub('mean.cpp_', '', 
+                          data3_experimental_transitions_agg_cpp$point)
+
+#view(data3_experimental_transitions_agg_cpp)
+
+
+##Point plot of cepstral peak prominence over time.
+#my_plot <-
+ggplot(data = data3_experimental_transitions_agg_cpp, 
+       aes(x = point, 
+           y = mean.cpp,
+           colour = transition)) +
+  geom_point() + 
+  geom_path(aes(x = point, 
+                y = mean.cpp, 
+                colour = transition,
+  #             linewidth = number,
+                group = transition),
+            alpha = 0.5) +
+#  scale_y_continuous(expand = c(0, 1.0), 
+#                     breaks = (c(10, 12, 14, 16, 18, 20, 22)), 
+#                     limits = c(10, 22)) +
+  scale_colour_discrete(labels = c("Formation", "Vocoid", "Zero offset", "Minimal offset", "Unanalysed")) +
+  labs(x = "\n Point over vowel",
+       y = "Mean cepstral peak prominence\n",
+       title = expression("Mean harmonicity over C"[1]*"V by C"[2]*""^H*"-C"[3]*" transition type"),
+       color = "Type of transition\n")
+
+
+```
+
+
+ggsave("C:/Users/ALI/OneDrive/Documents/8 cpp_transition_type.png", my_plot, width = 9, height = 6, bg = "white")
+
+
+
+```{r aggregating `data` for `target type` analysis}
+
+##We now, having successfully plotted the outcomes by 'transition type', turn to analysis by 'target type' (that is, the five target sets).
+
+#view(data2z)
+
+##We aggregate tokens by 'target type'.
+data2z_agg <-  
+  data2z %>%
+  group_by(target) %>% 
+  summarise(number = n())
+
+view(data2z_agg)
+
+
+```
+
+
+
+```{r visualisation of `target type` frequency}
+
+##We start with a frequency plot of tokens by 'target type'.
+
+#my_plot <-
+data2z_agg %>% 
+  mutate(target = factor(.$target, levels = c("Aspirate set I", "Aspirate set II", "Experimental set", "Unaspirate set I", "Unaspirate set II"))) %>%  
+  ggplot(data = ,
+         aes(x = target,
+             y = number,
+         fill = target),
+         show.legend = FALSE) +
+  geom_bar(stat = "identity") +
+scale_y_continuous(expand = c(0, 20), 
+                     breaks = (c(0, 100, 200, 300, 400, 500, 600, 700, 800)), 
+                     limits = c(0, 800)) +
+scale_fill_discrete(labels = c("Aspirate set I", "Aspirate set II", "Experimental set", "Unaspirate set I", "Unaspirate set II")) +
+labs(x = "\n Target set",
+     y = "Token frequency\n",
+     title = expression("Frequency of target set types"),
+     fill = "Target set type\n")
+
+```
+
+
+ggsave("C:/Users/ALI/OneDrive/Documents/18 frequency_target_type.png", my_plot, width = 9, height = 6, bg = "white")
+
+
+
+```{r visualisation of `target type` and `duration` by 'label'/items factor}
+
+##We now analyse, by the factor of 'label'/'item', the C1V transition types for vowel 'duration'.
+
+##We create means of the vowel duration by 'target type' and 'label'.
+data2z_target_label_durations <-  
+  data2z %>%
+  group_by(target, label) %>% 
+  summarise(number = n(),
+            mean.vocalic.segment = mean(vocalic.segment, na.rm = T))
+
+#view(data2z_target_label_durations)
+
+
+##We make a scatterplot of durations of tokens by 'label'/'item' type and within it embed the vocalic means. 
+#my_plot <-
+data2z %>% 
+  ggplot(aes(x = label,
+             y = vocalic.segment,
+             colour = factor(target, 
+                           levels = c("Aspirate set I", "Aspirate set II", "Experimental set", "Unaspirate set I", "Unaspirate set II")))) +
+  # add raw data
+  geom_point(aes(),
+             size = 2,
+             alpha = 0.5) +
+  # add model fit
+  geom_point(data = data2z_target_label_durations,
+             aes(y = mean.vocalic.segment,
+                 fill = factor(target,
+                           levels = c("Aspirate set I", "Aspirate set II", "Experimental set", "Unaspirate set I", "Unaspirate set II"))),
+             size = 4,
+             pch = 21,
+             color = "black",
+             show.legend = FALSE) +
+  scale_x_discrete(guide = guide_axis(n.dodge = 2)) +
+  scale_y_continuous(expand = c(0, 5), 
+                     breaks = (c(0, 40, 80, 120, 160, 200, 240)), 
+                     limits = c(0, 240)) +
+  scale_colour_discrete(labels = c("Aspirate set I", "Aspirate set II", "Experimental set", "Unaspirate set I", "Unaspirate set II")) +
+  labs(x = "\n Item",
+       y = "Vowel duration (ms)\n",
+       title = expression("Duration of C"[1]*"V vowel by target item type"),
+       colour = "Target set type\n")
+
+```
+
+
+ggsave("C:/Users/ALI/OneDrive/Documents/19 duration_target_item_type.png", my_plot, width = 9, height = 6, bg = "white")
+
+
+
+```{r visualisation of `target type` and `duration` by participants factor}
+
+##After that comes the factor of 'participant' for the C1V transition types and vowel 'duration'.
+
+##We so create means of vowel duration by 'target type' and 'participant'.
+data2z_target_participant_durations <- 
+  data2z %>%
+  group_by(target, participant) %>% 
+  summarise(number = n(),
+            mean.vocalic.segment = mean(vocalic.segment, na.rm = T))
+
+#view(data2z_agg_mod_target_participant_durations_agg)
+
+
+##Also, the scatterplot of durations of tokens by 'participant' type. 
+#my_plot <-
+data2z %>% 
+  ggplot(aes(x = participant,
+             y = vocalic.segment,
+             colour = factor(target, 
+                           levels = c("Aspirate set I", "Aspirate set II", "Experimental set", "Unaspirate set I", "Unaspirate set II")))) +
+  # add raw data
+  geom_point(aes(),
+             size = 1,
+             alpha = 0.7) +
+  # add model fit
+  geom_point(data = data2z_target_participant_durations,
+             aes(y = mean.vocalic.segment,
+                 fill = factor(target, 
+                           levels = c("Aspirate set I", "Aspirate set II", "Experimental set", "Unaspirate set I", "Unaspirate set II"))),
+             size = 2,
+             pch = 21,
+             color = "black",
+             show.legend = FALSE) +
+  scale_x_discrete(limits = c("1", "2", "3", "4", "6", "8", "9", "10", "11",
+                              "12", "13", "14", "15", "16", "17", "18", "19",
+                              "20", "21", "22", "23", "24", "25", "26", "27",
+                              "28", "29", "30", "31", "32", "33", "34", "35",
+                              "36", "37")) +
+  scale_y_continuous(expand = c(0, 5), 
+                     breaks = (c(0, 40, 80, 120, 160, 200, 240)), 
+                     limits = c(0, 240)) +
+  scale_colour_discrete(labels = c("Aspirate set I", "Aspirate set II", "Experimental set", "Unaspirate set I", "Unaspirate set II")) +
+  labs(x = "\n Participant",
+       y = "Vowel duration\n",
+       title = expression("Duration of C"[1]*"V vowel of target set type by participant"),
+       colour = "Target set type\n")
+
+
+```
+
+
+ggsave("C:/Users/ALI/OneDrive/Documents/20 duration_target_participant.png", my_plot, width = 9, height = 6, bg = "white")
+
+
+
+```{r aggregating `data` for C1V correlates analysis by `target type`}
+
+##Finally, we arrive at the output of the acoustic correlates of voice quality over the C1V transition by 'target type'.
+
+#view(data2z)
+
+##To aggregate the data.
+##And unlike in the previous visualisation, we include here the standard deviation values to add to the plot.
+data2z_agg <-  
+  data2z %>%
+  group_by(target) %>% 
+  summarise(number = n(),
+            mean.vocalic.segment = mean(vocalic.segment, na.rm = T),
+#            mean.closure.offset = mean(closure.offset, na.rm = T),
+            mean.hlhzc_1 = mean(hlhzc_1, na.rm = T),
+            sd.hlhzc_1 = sd(hlhzc_1, na.rm = T),
+            mean.hlhzc_2 = mean(hlhzc_2, na.rm = T),
+            sd.hlhzc_2 = sd(hlhzc_2, na.rm = T),
+            mean.hlhzc_3 = mean(hlhzc_3, na.rm = T),
+            sd.hlhzc_3 = sd(hlhzc_3, na.rm = T),
+            mean.hlhzc_4 = mean(hlhzc_4, na.rm = T),
+            sd.hlhzc_4 = sd(hlhzc_4, na.rm = T),
+            mean.hlhzc_5 = mean(hlhzc_5, na.rm = T),
+            sd.hlhzc_5 = sd(hlhzc_5, na.rm = T),
+            mean.hlaec_1 = mean(hlaec_1, na.rm = T),
+            sd.hlaec_1 = sd(hlaec_1, na.rm = T),
+            mean.hlaec_2 = mean(hlaec_2, na.rm = T),
+            sd.hlaec_2 = sd(hlaec_2, na.rm = T),
+            mean.hlaec_3 = mean(hlaec_3, na.rm = T),
+            sd.hlaec_3 = sd(hlaec_3, na.rm = T),
+            mean.hlaec_4 = mean(hlaec_4, na.rm = T),
+            sd.hlaec_4 = sd(hlaec_4, na.rm = T),
+            mean.hlaec_5 = mean(hlaec_5, na.rm = T),
+            sd.hlaec_5 = sd(hlaec_5, na.rm = T),
+            mean.cpp_1 = mean(cpp_1, na.rm = T),
+            sd.cpp_1 = sd(cpp_1, na.rm = T),
+            mean.cpp_2 = mean(cpp_2, na.rm = T),
+            sd.cpp_2 = sd(cpp_2, na.rm = T),
+            mean.cpp_3 = mean(cpp_3, na.rm = T),
+            sd.cpp_3 = sd(cpp_3, na.rm = T),
+            mean.cpp_4 = mean(cpp_4, na.rm = T),
+            sd.cpp_4 = sd(cpp_4, na.rm = T),
+            mean.cpp_5 = mean(cpp_5, na.rm = T),
+            sd.cpp_5 = sd(cpp_5, na.rm = T),
+            mean.pitch_1 = mean(pitch_1, na.rm = T),
+            sd.pitch_1 = sd(pitch_1, na.rm = T),
+            mean.pitch_2 = mean(pitch_2, na.rm = T),
+            sd.pitch_2 = sd(pitch_2, na.rm = T),
+            mean.pitch_3 = mean(pitch_3, na.rm = T),
+            sd.pitch_3 = sd(pitch_3, na.rm = T),
+            mean.pitch_4 = mean(pitch_4, na.rm = T),
+            sd.pitch_4 = sd(pitch_4, na.rm = T),
+            mean.pitch_5 = mean(pitch_5, na.rm = T),
+            sd.pitch_5 = sd(pitch_5, na.rm = T))
+
+view(data2z_agg)
+
+```
+
+
+
+```{r visualisation of H1-H2 over C1V by `target type`}
+
+##The H1-H2 mean values over five vowel points are to be redistributed from horizontal arrangement, by wrangling, to vertical arrangement.
+
+##Hence, wrangling to pivot longer. 
+data2z_agg_hlhzc <-  
+  data2z_agg %>% 
+  select(target,
+         mean.hlhzc_1, mean.hlhzc_2, mean.hlhzc_3, mean.hlhzc_4, mean.hlhzc_5) %>%
+  pivot_longer(cols = c(mean.hlhzc_1, mean.hlhzc_2, mean.hlhzc_3, mean.hlhzc_4, mean.hlhzc_5),
+               names_to = 'point', 
+               values_to = 'mean.hlhzc')
+
+##We remove the "mean.hlhzc_" from these respective points.
+data2z_agg_hlhzc$point <- gsub('mean.hlhzc_', '', 
+                          data2z_agg_hlhzc$point)
+
+#view(data2z_agg_hlhzc)
+
+
+#For the standard deviation part too, wrangling to pivot longer. 
+data2z_agg_hlhzc_sd <-  
+  data2z_agg %>% 
+  select(target,
+         sd.hlhzc_1, sd.hlhzc_2, sd.hlhzc_3, sd.hlhzc_4, sd.hlhzc_5) %>%
+  pivot_longer(cols = c(sd.hlhzc_1, sd.hlhzc_2, sd.hlhzc_3, sd.hlhzc_4, sd.hlhzc_5),
+               names_to = 'point', 
+               values_to = 'mean.sd')
+
+#view(data2z_agg_hlhzc_sd)
+
+##Copy the "mean.sd" column from 'data2z_agg_hlhzc_sd' to 'data2z_agg_hlhzc'.
+data2z_agg_hlhzc$mean.sd <- 
+  data2z_agg_hlhzc_sd$mean.sd
+
+
+##Thus, we plot the five H1-H2 points over time.
+#my_plot <-
+ggplot(data = data2z_agg_hlhzc, 
+       aes(x = point, 
+           y = mean.hlhzc,
+           colour = target)) +
+  geom_point() + 
+  geom_path(aes(x = point, 
+                y = mean.hlhzc, 
+##               linewidth = number,
+                colour = target,
+                group = target),
+            alpha = 0.5) +
+  geom_errorbar(aes(ymin = mean.hlhzc - mean.sd, 
+                    ymax = mean.hlhzc + mean.sd), 
+                    linetype = "longdash",
+                    linewidth = 0.2,
+                    width = 0.3,
+                    position = position_dodge(width = 0.3),
+                    alpha = 0.8) + 
+#  scale_y_continuous(expand = c(0, 0.5), 
+#                     breaks = (c(0, 2, 4, 6, 8, 10, 12)), 
+#                     limits = c(0, 12)) +
+  scale_colour_discrete(labels = c("Aspirate set I", "Aspirate set II", "Experimental set", "Unaspirate set I", "Unaspirate set II")) +
+  labs(x = "\n Point over vowel",
+       y = "Mean H1⋆-H2⋆ slope (db)\n",
+       title = expression("Mean spectral balance over C"[1]*"V by target set type"),
+       color = "Target set type\n")
+
+
+```
+
+
+ggsave("C:/Users/ALI/OneDrive/Documents/210 h1-h2_target_set_type.png", my_plot, width = 9, height = 6, bg = "white")
+
+
+
+```{r visualisation of H1-A3 over C1V by `target type`}
+
+##The H1-A3 mean values are redistributed from horizontal arrangement, by wrangling, to vertical arrangement.
+
+##Wrangling to pivot longer. 
+data2z_agg_hlaec <-  
+  data2z_agg %>% 
+  select(target,
+         mean.hlaec_1, mean.hlaec_2, mean.hlaec_3, mean.hlaec_4, mean.hlaec_5) %>%
+  pivot_longer(cols = c(mean.hlaec_1, mean.hlaec_2, mean.hlaec_3, mean.hlaec_4, mean.hlaec_5),
+               names_to = 'point', 
+               values_to = 'mean.hlaec')
+
+##We remove the "mean.hlaec_" from the respective points.
+data2z_agg_hlaec$point <- gsub('mean.hlaec_', '', 
+                          data2z_agg_hlaec$point)
+
+#view(data2z_agg_hlaec)
+
+
+#For standard deviation too, wrangling to pivot longer. 
+data2z_agg_hlaec_sd <-  
+  data2z_agg %>% 
+  select(target,
+         sd.hlaec_1, sd.hlaec_2, sd.hlaec_3, sd.hlaec_4, sd.hlaec_5) %>%
+  pivot_longer(cols = c(sd.hlaec_1, sd.hlaec_2, sd.hlaec_3, sd.hlaec_4, sd.hlaec_5),
+               names_to = 'point', 
+               values_to = 'mean.sd')
+
+#view(data2z_agg_hlaec_sd)
+
+##Copy from 'data2z_agg_hlaec_sd' column "mean.sd" to 'data2z_agg_hlaec'.
+data2z_agg_hlaec$mean.sd <- 
+  data2z_agg_hlaec_sd$mean.sd
+
+
+##Thus, we plot the five H1-A3 points over time.
+#my_plot <-
+ggplot(data = data2z_agg_hlaec, 
+       aes(x = point, 
+           y = mean.hlaec,
+           colour = target)) +
+  geom_point() + 
+  geom_path(aes(x = point, 
+                y = mean.hlaec, 
+##               linewidth = number,
+                colour = target,
+                group = target),
+            alpha = 0.5) +
+  geom_errorbar(aes(ymin = mean.hlaec - mean.sd, 
+                    ymax = mean.hlaec + mean.sd), 
+                    linetype = "longdash",
+                    linewidth = 0.2,
+                    width = 0.3,
+                    position = position_dodge(width = 0.3),
+                    alpha = 0.8) + 
+#  scale_y_continuous(expand = c(0, 1.0), 
+#                     breaks = (c(25, 30, 35, 40, 45)), 
+#                     limits = c(25, 45)) +
+  scale_colour_discrete(labels = c("Aspirates set I", "Aspirate set II", "Experimental set", "Unaspirate set I", "Unaspirate set II")) +
+  labs(x = "\n Point over vowel",
+       y = "Mean H1⋆-A3⋆ tilt (db)\n",
+       title = expression("Mean spectral balance over C"[1]*"V by target set type"),
+       color = "Target set type\n")
+
+
+```
+
+
+ggsave("C:/Users/ALI/OneDrive/Documents/220 h1-a3_target_set_type.png", my_plot, width = 9, height = 6, bg = "white")
+
+
+
+```{r visualisation of CPP over C1V by `target type`}
+
+##The CPP mean values are wrangled from horizontal to vertical arrangement.
+
+##Wrangling to pivot longer. 
+data2z_agg_cpp <-  
+  data2z_agg %>% 
+  select(target,
+         mean.cpp_1, mean.cpp_2, mean.cpp_3, mean.cpp_4, mean.cpp_5) %>%
+  pivot_longer(cols = c(mean.cpp_1, mean.cpp_2, mean.cpp_3, mean.cpp_4, mean.cpp_5),
+               names_to = 'point', 
+               values_to = 'mean.cpp')
+
+##Remove "mean.cpp_" bit from the respective points.
+data2z_agg_cpp$point <- gsub('mean.cpp_', '', 
+                          data2z_agg_cpp$point)
+
+#view(data2z_agg_cpp)
+
+
+#Wrangling to pivot longer for standard deviation.  
+data2z_agg_cpp_sd <-  
+  data2z_agg %>% 
+  select(target,
+         sd.cpp_1, sd.cpp_2, sd.cpp_3, sd.cpp_4, sd.cpp_5) %>%
+  pivot_longer(cols = c(sd.cpp_1, sd.cpp_2, sd.cpp_3, sd.cpp_4, sd.cpp_5),
+               names_to = 'point', 
+               values_to = 'mean.sd')
+
+#view(data2z_agg_cpp_sd)
+
+##Copy "mean.sd" from 'data2z_agg_cpp_sd' to 'data2z_agg_cpp'.
+data2z_agg_cpp$mean.sd <- 
+  data2z_agg_cpp_sd$mean.sd
+
+
+##Thus, we plot the five H1-H2 points over time.
+#my_plot <-
+ggplot(data = data2z_agg_cpp, 
+       aes(x = point, 
+           y = mean.cpp,
+           colour = target)) +
+  geom_point() + 
+  geom_path(aes(x = point, 
+                y = mean.cpp, 
+##               linewidth = number,
+                colour = target,
+                group = target),
+            alpha = 0.5) +
+  geom_errorbar(aes(ymin = mean.cpp - mean.sd, 
+                    ymax = mean.cpp + mean.sd), 
+                    linetype = "longdash",
+                    linewidth = 0.2,
+                    width = 0.3,
+                    position = position_dodge(width = 0.3),
+                    alpha = 0.8) + 
+  geom_errorbar(aes(ymin = mean.cpp - mean.sd, 
+                    ymax = mean.cpp + mean.sd), 
+                    linetype = "longdash",
+                    linewidth = 0.2,
+                    width = 0.3,
+                    position = position_dodge(width = 0.3),
+                    alpha = 0.8) + 
+#  scale_y_continuous(expand = c(0, 1.0), 
+#                     breaks = (c(10, 12, 14, 16, 18, 20, 22)), 
+#                     limits = c(10, 22)) +
+  scale_colour_discrete(labels = c("Aspirate set I", "Aspirate set II", "Experimental set", "Unaspirate set I", "Unaspirate set II")) +
+  labs(x = "\n Point over vowel",
+       y = "Mean cepstral peak prominence\n",
+       title = expression("Mean harmonicity over C"[1]*"V by target set type"),
+       color = "Target set type\n")
+
+
+```
+
+
+ggsave("C:/Users/ALI/OneDrive/Documents/230 cpp_target_set_type.png", my_plot, width = 9, height = 6, bg = "white")
+
+
+
+```{r visualisation of pitch over C1V by `target type`}
+
+##The pitch mean values are wrangled.
+
+##Wrangling to pivot longer. 
+data2z_agg_pitch <-  
+  data2z_agg %>% 
+  select(target,
+         mean.pitch_1, mean.pitch_2, mean.pitch_3, mean.pitch_4, mean.pitch_5) %>%
+  pivot_longer(cols = c(mean.pitch_1, mean.pitch_2, mean.pitch_3, mean.pitch_4, mean.pitch_5),
+               names_to = 'point', 
+               values_to = 'mean.pitch')
+
+##Remove "mean.pitch_".
+data2z_agg_pitch$point <- gsub('mean.pitch_', '', 
+                          data2z_agg_cpp$point)
+
+#view(data2z_agg_pitch)
+
+
+#Wrangling to pivot longer for standard deviation too.  
+data2z_agg_pitch_sd <-  
+  data2z_agg %>% 
+  select(target,
+         sd.pitch_1, sd.pitch_2, sd.pitch_3, sd.pitch_4, sd.pitch_5) %>%
+  pivot_longer(cols = c(sd.pitch_1, sd.pitch_2, sd.pitch_3, sd.pitch_4, sd.pitch_5),
+               names_to = 'point', 
+               values_to = 'mean.sd')
+
+#view(data2z_agg_pitch_sd)
+
+##Copy "mean.sd" from 'data2z_agg_pitch_sd' to 'data2z_agg_pitch'.
+data2z_agg_pitch$mean.sd <- 
+  data2z_agg_pitch_sd$mean.sd
+
+
+##Thus, we plot the five H1-H2 points over time.
+#my_plot <-
+ggplot(data = data2z_agg_pitch, 
+       aes(x = point, 
+           y = mean.pitch,
+           colour = target)) +
+  geom_point() + 
+  geom_path(aes(x = point, 
+                y = mean.pitch, 
+                colour = target,
+  #             linewidth = number,
+                group = target),
+            alpha = 0.5) +
+#  scale_y_continuous(expand = c(0, 2), 
+#                     breaks = (c(100, 110, 120, 130, 140, 150)), 
+#                     limits = c(100, 150)) +
+  geom_errorbar(aes(ymin = mean.pitch - mean.sd, 
+                    ymax = mean.pitch + mean.sd), 
+                    linetype = "longdash",
+                    linewidth = 0.2,
+                    width = 0.3,
+                    position = position_dodge(width = 0.3),
+                    alpha = 0.8) + 
+  scale_colour_discrete(labels = c("Aspirate set I", "Aspirate set II", "Experimental set", "Unaspirate set I", "Unaspirate set II")) +
+  labs(x = "\n Point over vowel",
+       y = "Mean fundamental frequency (Hz)\n",
+       title = expression("Mean F0 over C"[1]*"V by target set type"),
+       color = "Target set type\n")
+
+
+```
+
+
+ggsave("C:/Users/ALI/OneDrive/Documents/240 pitch_target_set_type.png", my_plot, width = 9, height = 6, bg = "white")
+
+
+
+
+
+
+
+
+###We analyse then the output of perception.
+
+
+```{r wrangling/`processing` data for C1V outcomes of `perception analysis`}
+ 
+##The first thing we want to know are the frequency outcomes of C1V by perceptual analysis, in terms of "aspirated", "unaspirated", "unsure", of the five volunteers.
+
+##We need to start with our 'basic' dataset, namely "data2z".
+#view(data2z)
+
+##The data was analysed for auditory-perceptual judgments in the form of three sets, that is "experimental group", "control group I", and "control group II".
+##Therefore, we analyse it in terms of these same groups.  
+
+##We first specify the variable 'analysis', starting with 'analysis 1', which are NA, 1 or 0:
+##If it is 1, it is "Aspirated"; and if it is 0, it gets the value "Unaspirated"; otherwise, i.e. with NA, the value assigned is "Unsure".
+
+##Let us first create a copy of the data.
+data2z_specified <-  
+  data2z
+
+##We now commence mutating.
+data2z_specified <- 
+  data2z_specified %>%
+  mutate(analysis_1 = ifelse(is.na(analysis_1), "Unsure",
+                         ifelse(analysis_1 == "1", "Aspirated", "Unaspirated")))
+
+##The same with the rest.
+data2z_specified <-  
+  data2z_specified %>%
+  mutate(analysis_2 = ifelse(is.na(analysis_2), "Unsure",
+                         ifelse(analysis_2 == "1", "Aspirated", "Unaspirated")))
+
+data2z_specified <-  
+  data2z_specified %>%
+  mutate(analysis_3 = ifelse(is.na(analysis_3), "Unsure",
+                         ifelse(analysis_3 == "1", "Aspirated", "Unaspirated")))
+
+data2z_specified <-  
+  data2z_specified %>%
+  mutate(analysis_4 = ifelse(is.na(analysis_4), "Unsure",
+                         ifelse(analysis_4 == "1", "Aspirated", "Unaspirated")))
+
+data2z_specified <- 
+  data2z_specified %>%
+  mutate(analysis_5 = ifelse(is.na(analysis_5), "Unsure",
+                         ifelse(analysis_5 == "1", "Aspirated", "Unaspirated")))
+
+#view(data2z_specified)
+
+
+##Here, we do some renaming in 'target' values, primarily with the aim of merging four target sets into two groups, as the data would be analysed by the variable 'target' and in sets of three (not five).
+##The other reason for renaming is also to include the word "group" into the identifier or the 'target' value. 
+
+##Let us then create a yet new copy.
+data2z_specified_modified <-  
+  data2z_specified
+
+data2z_specified_modified <-  
+  data2z_specified_modified %>%
+  mutate(target = recode(target, "Unaspirate set I" = "Control group I"))
+
+data2z_specified_modified <-  
+  data2z_specified_modified %>%
+  mutate(target = recode(target, "Aspirate set I" = "Control group I"))
+
+data2z_specified_modified <-  
+  data2z_specified_modified %>%
+  mutate(target = recode(target, "Unaspirate set II" = "Control group II"))
+  
+data2z_specified_modified <-  
+  data2z_specified_modified %>%
+  mutate(target = recode(target, "Aspirate set II" = "Control group II"))
+
+data2z_specified_modified <-  
+  data2z_specified_modified %>%
+  mutate(target = recode(target, "Experimental set" = "Experimental group"))
+
+#view(data2z_specified_modified)
+
+
+##In the end, we pivot longer to re-arrange the 'analysis' in the dataset.
+data2z_specified_modified_longer <- 
+  data2z_specified_modified %>% 
+  select(participant, label, target, 
+         analysis_1, analysis_2, analysis_3, analysis_4, analysis_5) %>%
+  pivot_longer(cols = c(analysis_1, analysis_2, analysis_3, analysis_4, analysis_5),
+               names_to = 'analyst', 
+               values_to = 'category')
+
+view(data2z_specified_modified_longer)
+
+
+```
+
+
+
+```{r visualisation of perception category outcomes by `target type`}
+
+#view(data2z_specified_modified)
+
+##The thing left now before plotting the output of perception is to create an aggregate of the tokens by the factors of 'analyst', 'target', and 'category'.
+data2z_specified_modified_longer_category_agg <- 
+  data2z_specified_modified_longer %>% 
+  group_by(analyst, target, category) %>% 
+  summarise(number = n())
+
+#view(data2z_specified_modified_longer_category_agg)
+
+
+##Here we make the frequency plot by 'analyst' and 'target group'. 
+#my_plot <-
+  ggplot(data = data2z_specified_modified_longer_category_agg,
+         aes(x = factor(target, 
+                           levels = c("Experimental group", "Control group I", "Control group II")),
+             y = number,
+             fill = category),
+         show.legend = FALSE) +
+  geom_col(position = position_dodge()) +
+  facet_wrap(factor(analyst, 
+                    labels = c("Volunteer 1", "Volunteer 2", "Volunteer 3", "Volunteer 4", "Volunteer 5")) 
+             ~.,
+             ncol = 2) +
+  scale_y_continuous(expand = c(0, 20), 
+                     breaks = (c(0, 100, 200, 300, 400, 500, 600, 700, 800)), 
+                     limits = c(0, 800)) +
+#  scale_fill_discrete(labels = c("Aspirated class I", "Unaspirated class I", "Experimental", #"Aspirated class II", "Unaspirated class II")) +
+  labs(x = "\n Target group type",
+     y = "Token frequency\n",
+     title = expression("Frequencies of C"[1]*"V outcomes by perceptual analysis of 5 volunteers"),
+     fill = "Perception category\n")
+  
+  
+```
+
+
+ggsave("C:/Users/ALI/OneDrive/Documents/700 frequency_target_set_category_5_volunteers.png", my_plot, width = 9, height = 6, bg = "white")
+
+
+
+```{r visualisation of perception category outcomes by `target`}
+
+##The dataset is here already.
+#view(data2z_specified_modified_longer_category_agg)
+
+##We aggregate to obtain relative frequencies.
+data2z_specified_modified_longer_category_agg_relative <- 
+  data2z_specified_modified_longer_category_agg %>% 
+  group_by(analyst, target) %>% 
+  mutate(total = sum(number)) %>% 
+  ungroup(analyst, target) %>% 
+  group_by(analyst, target, category) %>% 
+  mutate(percentage = (number)/(total) * 100) %>% 
+  ungroup(analyst, target, category)
+  
+#view(data2z_specified_modified_longer_category_agg_relative)
+
+
+##Thus, the relative frequency plot by 'analyst' and 'target group'.
+#my_plot <-
+  ggplot(data = data2z_specified_modified_longer_agg_relative,
+         aes(x = factor(target, 
+                           levels = c("Experimental group", "Control group I", "Control group II")),
+             y = percentage,
+             fill = category),
+         show.legend = FALSE) +
+  geom_col(position = position_dodge()) +
+  facet_wrap(factor(analyst, 
+                    labels = c("Volunteer 1", "Volunteer 2", "Volunteer 3", "Volunteer 4", "Volunteer 5")) 
+             ~.,
+             ncol = 2) +
+#  geom_col(data = data2_dataz_agg_specified_modified_both_analyst2_agg,
+#         aes(x = analysis_2,
+#             y = number,
+#             fill = factor(target, 
+#                           levels = c("Experimental", "Class I", "Class II"))),
+#         show.legend = FALSE,
+#         position = position_dodge()) +
+  scale_y_continuous(expand = c(0, 2.5), 
+                     breaks = (c(0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100)), 
+                     limits = c(0, 100)) +
+#  scale_fill_discrete(labels = c("Aspirated class I", "Unaspirated class I", "Experimental", #"Aspirated class II", "Unaspirated class II")) +
+  labs(x = "\n Target group type",
+     y = "Relative token frequency in %\n",
+     title = expression("Frequencies of C"[1]*"V outcomes by perceptual analysis of 5 volunteers"),
+     fill = "Perception category\n")
+  
+
+```
+
+
+ggsave("C:/Users/ALI/OneDrive/Documents/710 relative_frequency_target_set_category_5_volunteers.png", my_plot, width = 9, height = 6, bg = "white")
+
+
+
+```{r visualisation of perception category outcomes by `item`}
+
+##Now come the item-wise outcomes.
+
+#view(data2z_specified_modified_longer)
+
+##We aggregate the data to obtain outcomes across the board, that is for 'label', 'category', as well as 'analyst'.
+data2z_specified_modified_longer_label_agg <- 
+  data2z_specified_modified_longer %>% 
+  group_by(analyst, label, category) %>% 
+  summarise(number = n())
+
+view(data2z_specified_modified_longer_label_agg)
+
+##Next, we obtain the relative frequency of these outcomes.
+data2z_specified_modified_longer_label_agg_relative <- 
+  data2z_specified_modified_longer_label_agg %>% 
+  group_by(analyst, label) %>% 
+  mutate(total = sum(number)) %>% 
+  ungroup(analyst, label) %>% 
+  group_by(analyst, label, category) %>% 
+  mutate(percentage = (number)/(total) * 100) %>% 
+  ungroup(analyst, label, category)
+
+view(data2z_specified_modified_longer_label_agg_relative)
+
+
+##With this, then, we plot the item-wise outcomes right below.
+#my_plot <-
+  ggplot(data = data2z_specified_modified_longer_label_agg_relative,
+         aes(x = label,
+             y = percentage,
+             fill = factor(category, 
+                           levels = c("Aspirated", "Unaspirated", "Unsure"))),
+         show.legend = FALSE) +
+  geom_col(position = position_dodge2(preserve = "single")) +
+  scale_x_discrete(guide = guide_axis(n.dodge = 2)) +
+#  scale_y_continuous(expand = c(0, 2.5), 
+#                     breaks = (c(0, 20, 40, 60, 80, 100, 120)), 
+#                     limits = c(0, 120)) +
+  facet_wrap(factor(analyst, 
+                    labels = c("Volunteer 1", "Volunteer 2", "Volunteer 3", "Volunteer 4", "Volunteer 5")) 
+             ~.,
+             ncol = 1) +
+  scale_fill_discrete(labels = c("Aspirated", "Unaspirated", "Unsure")) +
+  labs(x = "\n Item",
+     y = "Relative token frequency in %\n",
+     title = expression("Frequency of item-wise C"[1]*"V outcomes of perceptual analysis of 5 volunteers"),
+     fill = "Perception category\n")
+
+  
+```
+
+
+ggsave("C:/Users/ALI/OneDrive/Documents/7100 relative_frequency_label_target_category_5_volunteers_withzero.png", my_plot, width = 9, height = 8, bg = "white")
+
+
+
+```{r wrangling/`processing` for `unanimous' perception outcomes by `target`}
+
+##The next stage of analysis would be to explore the outcomes of 'unanimous categorisation' by 'target group' as well as 'item'.
+##This actually needs some data shuffling.
+
+##We start with the "specified-modified" dataset. 
+#view(data2z_specified_modified)
+
+##From it, we can filter the tokens on which there is complete volunteer agreement, in terms of the occurrence of aspiration and no occurrence of aspiration. 
+##There are no "unsure" unanimous outcomes.
+data2z_sm_all_aspirated <- 
+  data2z_specified_modified %>% 
+  filter(analysis_1 == "Aspirated", analysis_2 == "Aspirated", 
+         analysis_3 == "Aspirated", analysis_4 == "Aspirated", 
+         analysis_5 == "Aspirated")
+
+#view(data2z_sm_all_aspirated)
+
+data2z_sm_all_unaspirated <- 
+  data2z_specified_modified %>% 
+  filter(analysis_1 == "Unaspirated", analysis_2 == "Unaspirated", 
+         analysis_3 == "Unaspirated", analysis_4 == "Unaspirated", 
+         analysis_5 == "Unaspirated")
+
+#view(data2z_sm_all_unaspirated)
+
+##We bind these two subsets.
+data2z_sm_all_au_both <- 
+  rbind(data2z_sm_all_aspirated, data2z_sm_all_unaspirated)
+
+view(data2z_sm_all_au_both)
+
+##We aggregate the outcome of perceptual categorisation by 'target'.
+##It does not matter whether we use for that the results of "analyst_1" or any other, as the results are same across all five in this set. 
+data2z_sm_all_au_both_target_agg <- 
+  data2z_sm_all_au_both %>% 
+  group_by(target, analysis_1) %>% 
+  summarise(number = n())
+
+#view(data2z_sm_all_au_both_target_agg)
+
+##We want to compare "unanimous" outcomes with the 'non-unanimous' ones and for that need this latter kind of outcomes too.
+##And let us do this manually. [For I cannot think of any efficient way of doing it.]
+
+##We have three columns in the data, "analysis_1", "number", "target".
+analysis_1 <- 
+  c("Non-unanimous")
+
+number <- 
+  c(324)
+
+target <- 
+  c("Experimental group")
+
+##Of these, we create a dataframe.
+exp_values_non <- 
+  data.frame(analysis_1, number, target)
+
+##For another dataframe.
+analysis_1 <- 
+  c("Non-unanimous")
+
+number <- 
+  c(166)
+
+target <- 
+  c("Control group I")
+
+control_I_values_non <- 
+  data.frame(analysis_1, number, target)
+
+##For yet another dataframe.
+analysis_1 <- 
+  c("Non-unanimous")
+
+number <- 
+  c(279)
+
+target <- 
+  c("Control group II")
+
+control_II_values_non <- 
+  data.frame(analysis_1, number, target)
+
+##Now we bind these four. 
+data2z_sm_all_au_both_target_agg_further <-
+  rbind(data2z_sm_all_au_both_target_agg, control_I_values_non, control_II_values_non, exp_values_non)
+
+view(data2z_sm_all_au_both_target_agg_further)
+
+
+```
+
+
+
+```{r visualisation of `unanimous' perception outcomes by `target'}
+
+#view(data2z_sm_all_au_both_target_agg_further)
+
+##With the data ready, we now draw the relative frequency outcomes. 
+data2z_sm_all_au_both_target_agg_further_relative <- 
+  data2z_sm_all_au_both_target_agg_further %>% 
+  group_by(target) %>% 
+  mutate(total = sum(number)) %>% 
+  ungroup(target) %>% 
+  group_by(analysis_1, target) %>% 
+  mutate(percentage = (number)/(total) * 100) %>% 
+  ungroup(analysis_1, target)
+  
+view(data2z_sm_all_au_both_target_agg_further_relative)
+
+
+##And so the plot follows.
+#my_plot <-
+  ggplot(data = data2z_sm_all_au_both_target_agg_further_relative,
+         aes(x = factor(target, 
+                           levels = c("Experimental group", "Control group I", "Control group II")),
+             y = percentage,
+             fill = analysis_1),
+         show.legend = FALSE) +
+  geom_col(position = position_dodge()) +
+  scale_y_continuous(expand = c(0, 2.5), 
+                     breaks = (c(0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100)), 
+                     limits = c(0, 100)) +
+  scale_fill_discrete(labels = c("Aspirated", "Unaspirated", "Non-unanimous")) +
+  labs(x = "\n Target group type",
+     y = "Relative token frequency in %\n",
+     title = expression("Frequency of C"[1]*"V outcomes with unanimous categorization by perceptual analysis"),
+     fill = "Outcome\n")
+
+
+```
+
+
+ggsave("C:/Users/ALI/OneDrive/Documents/770 relative_frequency_target_category_5_volunteers.png", my_plot, width = 9, height = 6, bg = "white")
+
+
+
+```{r prolonged wrangling/`processing` for `unanimous' outcomes by `item'}
+
+##Now come the item-wise outcomes.
+
+##We go back to the "specified-modified" dataset.
+view(data2z_specified_modified)
+
+##We go back to the "specified-modified" dataset and create a total of the labels.
+data2z_specified_modified_further <- 
+  data2z_specified_modified %>% 
+  mutate(total = 1) %>% 
+  group_by(label) %>% 
+  mutate(total = sum(total)) %>%  
+  ungroup(label) 
+
+view(data2z_specified_modified_further)
+
+##We filter the tokens with all "Aspirated" and all "Unaspirated" outcomes.
+data2z_smf_all_aspirated <- 
+  data2z_specified_modified_further %>% 
+  filter(analysis_1 == "Aspirated", analysis_2 == "Aspirated", 
+         analysis_3 == "Aspirated", analysis_4 == "Aspirated", 
+         analysis_5 == "Aspirated")
+
+#view(data2z_smf_all_aspirated)
+
+data2z_smf_all_unaspirated <- 
+  data2z_specified_modified_further %>% 
+  filter(analysis_1 == "Unaspirated", analysis_2 == "Unaspirated", 
+         analysis_3 == "Unaspirated", analysis_4 == "Unaspirated", 
+         analysis_5 == "Unaspirated")
+
+#view(data2z_smf_all_unaspirated)
+
+##We bind these two subsets.
+data2z_smf_all_au_both <- 
+  rbind(data2z_smf_all_aspirated, data2z_smf_all_unaspirated)
+
+view(data2z_smf_all_au_both)
+
+##We then calculate the tokens by 'analysis_1' (or 'analysis' any) and 'label'.
+data2z_smf_all_au_both_n <- 
+  data2z_smf_all_au_both %>% 
+  group_by(analysis_1, label) %>% 
+  mutate(number = n()) %>% 
+  ungroup(analysis_1, label) 
+
+#view(data2z_smf_all_au_both_n)
+
+##From these, we sift the unique combinations by 'analysis_1' and 'label'.
+data2z_smf_all_au_both_n_d <- 
+  data2z_smf_all_au_both_n %>% 
+  distinct(analysis_1, label, .keep_all = TRUE)
+
+view(data2z_smf_all_au_both_n_d)
+##Which amounts to 35 entries.
+  
+##Next, we need to calculate 'unanimous' and 'non-unanimous' outcomes.
+data2z_smf_all_au_both_n_d_s <- 
+  data2z_smf_all_au_both_n_d %>% 
+  group_by(target, label) %>% 
+  mutate(unanimous = sum(number)) %>%  
+  ungroup(target, label) %>% 
+  mutate(nonunanimous = total - unanimous) 
+
+view(data2z_smf_all_au_both_n_d_s)
+
+##With this set, we can pivot longer to turn columns with numeric values into rows.
+data2z_smf_all_au_both_n_d_s_l <- 
+  data2z_smf_all_au_both_n_d_s %>% 
+  select(target, label,  
+         analysis_1,
+         number, nonunanimous, total) %>%
+  pivot_longer(cols = c(number, nonunanimous, total),
+               names_to = 'analysis', 
+               values_to = 'summed')
+
+view(data2z_smf_all_au_both_n_d_s_l)
+
+##We ended up, of course, with a lot of extra values.
+##So we can apply 'distinct' once more to filter unique combinations.
+data2z_smf_all_au_both_n_d_s_l_d <- 
+  data2z_smf_all_au_both_n_d_s_l %>% 
+  distinct(label, summed, .keep_all = TRUE)
+
+view(data2z_smf_all_au_both_n_d_s_l_d)
+
+##We need now to merge our 'analysis_1' and 'analysis' outcomes to retain the different perception results. 
+data2z_smf_all_au_both_n_d_s_l_d_m <- 
+  data2z_smf_all_au_both_n_d_s_l_d %>%
+  mutate(merged = paste(analysis_1, analysis))
+
+view(data2z_smf_all_au_both_n_d_s_l_d_m)
+
+##What is left now is to rename the values of the 'merged' column. 
+##So we create first a copy of our data, as we do that. 
+data2z_smf_all_au_both_n_d_s_l_d_m_copy <- 
+  data2z_smf_all_au_both_n_d_s_l_d_m
+
+##And the renaming commences.
+data2z_smf_all_au_both_n_d_s_l_d_m_copy['merged'][data2z_smf_all_au_both_n_d_s_l_d_m_copy['merged'] == "Aspirated number"] <- "Aspirated"
+
+data2z_smf_all_au_both_n_d_s_l_d_m_copy['merged'][data2z_smf_all_au_both_n_d_s_l_d_m_copy['merged'] == "Unaspirated number"] <- "Unaspirated"
+
+data2z_smf_all_au_both_n_d_s_l_d_m_copy['merged'][data2z_smf_all_au_both_n_d_s_l_d_m_copy['merged'] == "Aspirated nonunanimous"] <- "Non-unanimous"
+
+data2z_smf_all_au_both_n_d_s_l_d_m_copy['merged'][data2z_smf_all_au_both_n_d_s_l_d_m_copy['merged'] == "Unaspirated nonunanimous"] <- "Non-unanimous"
+
+data2z_smf_all_au_both_n_d_s_l_d_m_copy['merged'][data2z_smf_all_au_both_n_d_s_l_d_m_copy['merged'] == "Aspirated total"] <- "Total"
+
+data2z_smf_all_au_both_n_d_s_l_d_m_copy['merged'][data2z_smf_all_au_both_n_d_s_l_d_m_copy['merged'] == "Unaspirated total"] <- "Total"
+
+##Let's take a look!
+view(data2z_smf_all_au_both_n_d_s_l_d_m_copy)
+##[Phew!] That wasn't so hard, was it! There is a more efficient way of doing it, one hopes. 
+
+
+##One final thing we can do is to give our values as relative frequency, that is as percentage.
+##So we filter out the total, since we would be creating a new column with total.
+data2z_smf_all_au_both_n_d_s_l_d_m_copy_filtered <- 
+  data2z_smf_all_au_both_n_d_s_l_d_m_copy %>% 
+  select(target,
+         label, 
+         summed, 
+         merged) %>%
+  filter(!merged == c("Total")) 
+
+#view(data2z_smf_all_au_both_n_d_s_l_d_m_copy_filtered)
+
+##And we obtain the relative frequency.
+data2z_smf_all_au_both_n_d_s_l_d_m_copy_filtered_relative <- 
+  data2z_smf_all_au_both_n_d_s_l_d_m_copy_filtered %>% 
+  group_by(label) %>% 
+  mutate(total = sum(summed)) %>% 
+  ungroup(label) %>% 
+  group_by(merged, target) %>% 
+  mutate(percentage = (summed)/(total) * 100) %>% 
+  ungroup(merged, target)
+
+view(data2z_smf_all_au_both_n_d_s_l_d_m_copy_filtered_relative)
+##Yes...
+
+```  
+
+
+
+```{r visualisation of `unanimous' perception outcomes by `item'}
+
+#view(data2z_smf_all_au_both_n_d_s_l_d_m_copy_filtered_relative)
+
+##Our coming item-wise plot would be worth it...
+my_plot <-
+  ggplot(data = data2z_smf_all_au_both_n_d_s_l_d_m_copy_filtered_relative,
+         aes(x = label,
+             y = percentage,
+             fill = factor(merged, 
+                           levels = c("Aspirated", "Unaspirated", "Non-unanimous"))),
+         show.legend = FALSE) +
+  geom_col(position = position_dodge2(preserve = "single")) +
+  scale_x_discrete(guide = guide_axis(n.dodge = 2)) +
+  scale_y_continuous(expand = c(0, 2.5), 
+                     breaks = (c(0, 20, 40, 60, 80, 100)), 
+                     limits = c(0, 100)) +
+  scale_fill_discrete(labels = c("Aspirated", "Unaspirated", "Non-unanimous")) +
+  labs(x = "\n Item",
+     y = "Relative token frequency in %\n",
+     title = expression("Frequency of item-wise C"[1]*"V outcomes with unanimous categorization by perceptual analysis"),
+     fill = "Outcome\n")
+
+  
+```
+
+
+ggsave("C:/Users/ALI/OneDrive/Documents/78 frequency_label_target_category_5_volunteers_withzero_non-unanimous.png", my_plot, width = 9, height = 5, bg = "white")
+
+
+
+```{r aggregating `data` of C1V correlates for `unanimous' perception outcomes}
+
+##At long last, we come to the output of the acoustic correlates of voice quality over the C1V transition.
+##We have a dataset at hand to commence with, which was created in the above.
+view(data2z_sm_all_au_both)
+
+##We begin by aggregating the data.
+##This data is to be grouped by 'target', for group, and 'analysis_1' (or any 'analysis'), for unanimous outcome.
+data2z_sm_all_au_both_agg <-  
+  data2z_sm_all_au_both %>%
+  group_by(target, analysis_1) %>% 
+  summarise(number = n(),
+            mean.vocalic.segment = mean(vocalic.segment, na.rm = T),
+#            mean.closure.offset = mean(closure.offset, na.rm = T),
+            mean.hlhzc_1 = mean(hlhzc_1, na.rm = T),
+            mean.hlhzc_2 = mean(hlhzc_2, na.rm = T),
+            mean.hlhzc_3 = mean(hlhzc_3, na.rm = T),
+            mean.hlhzc_4 = mean(hlhzc_4, na.rm = T),
+            mean.hlhzc_5 = mean(hlhzc_5, na.rm = T),
+            mean.hlaec_1 = mean(hlaec_1, na.rm = T),
+            mean.hlaec_2 = mean(hlaec_2, na.rm = T),
+            mean.hlaec_3 = mean(hlaec_3, na.rm = T),
+            mean.hlaec_4 = mean(hlaec_4, na.rm = T),
+            mean.hlaec_5 = mean(hlaec_5, na.rm = T),
+            mean.cpp_1 = mean(cpp_1, na.rm = T),
+            mean.cpp_2 = mean(cpp_2, na.rm = T),
+            mean.cpp_3 = mean(cpp_3, na.rm = T),
+            mean.cpp_4 = mean(cpp_4, na.rm = T),
+            mean.cpp_5 = mean(cpp_5, na.rm = T),
+            mean.pitch_1 = mean(pitch_1, na.rm = T),
+            mean.pitch_2 = mean(pitch_2, na.rm = T),
+            mean.pitch_3 = mean(pitch_3, na.rm = T),
+            mean.pitch_4 = mean(pitch_4, na.rm = T),
+            mean.pitch_5 = mean(pitch_5, na.rm = T))
+
+view(data2z_sm_all_au_both_agg)
+
+
+##Since the points will be plotted by 'target', there might not be enough space in the plot for labels like 'Experimental group', 'Control group I', etc. 
+##So it is advisable to rename these values. 
+
+##For that we create a copy of the data.
+data2z_sm_all_au_both_agg_copy <-
+  data2z_sm_all_au_both_agg
+
+##We, thus, rename the relevant values.
+data2z_sm_all_au_both_agg_copy['target'][data2z_sm_all_au_both_agg_copy['target'] == "Experimental group"] <- "exp."
+
+data2z_sm_all_au_both_agg_copy['target'][data2z_sm_all_au_both_agg_copy['target'] == "Control group I"] <- "group I"
+
+data2z_sm_all_au_both_agg_copy['target'][data2z_sm_all_au_both_agg_copy['target'] == "Control group II"] <- "group II"
+
+view(data2z_sm_all_au_both_agg_copy)
+  
+
+```
+
+
+
+```{r visualisation of H1-H2 over C1V by `unanimous' perception outcomes}
+
+#view(data2z_sm_all_au_both_agg_copy)
+
+##From the given set, we can employ the relevant columns, just by doing 'select'.
+##We can simultaneously also pivot_longer. 
+data2z_sm_all_au_both_agg_copy_hlhzc <-  
+  data2z_sm_all_au_both_agg_copy %>% 
+  select(target, 
+         analysis_1,
+         mean.hlhzc_1, mean.hlhzc_2, mean.hlhzc_3, mean.hlhzc_4, mean.hlhzc_5) %>%
+  pivot_longer(cols = c(mean.hlhzc_1, mean.hlhzc_2, mean.hlhzc_3, mean.hlhzc_4, mean.hlhzc_5),
+               names_to = 'point', 
+               values_to = 'mean.hlhzc')
+
+#view(data2z_sm_all_au_both_agg_copy_hlhzc)
+
+##We remove then the "mean.hlhzc_" bit from the five points.
+data2z_sm_all_au_both_agg_copy_hlhzc$point <- gsub('mean.hlhzc_', '', 
+                          data2z_sm_all_au_both_agg_copy_hlhzc$point)
+
+view(data2z_sm_all_au_both_agg_copy_hlhzc)
+
+
+##We create a copy of the data in which we filter "point 1" and "point 5", by which we would be mapping the labels on the plot.
+data2z_sm_all_au_both_agg_copy_hlhzc_mod <-  
+  data2z_sm_all_au_both_agg_copy_hlhzc %>%
+  filter(point %in%  c("1", "5"))
+
+#view(data2z_sm_all_au_both_agg_copy_hlhzc_mod)
+
+
+##In the end, we create smaller subsets from 'data2z_sm_all_au_both_agg_copy_hlhzc', so that we can plot each target group separately and the lines do not cross over one another.
+data2z_sm_all_au_both_agg_copy_hlhzc_exp <-  
+  data2z_sm_all_au_both_agg_copy_hlhzc %>%
+  filter(target == "exp.")
+
+#view(data2z_sm_all_au_both_agg_copy_hlhzc_exp)
+
+data2z_sm_all_au_both_agg_copy_hlhzc_control_I <-  
+  data2z_sm_all_au_both_agg_copy_hlhzc %>%
+  filter(target == "group I")
+
+#view(data2z_sm_all_au_both_agg_copy_hlhzc_control_I)
+
+data2z_sm_all_au_both_agg_copy_hlhzc_control_II <-  
+  data2z_sm_all_au_both_agg_copy_hlhzc %>%
+  filter(target == "group II")
+
+#view(data2z_sm_all_au_both_agg_copy_hlhzc_control_II)
+
+
+##And, hence, we produce the H1-H2 plot.
+##Within this plot of perception output, we embed the production output by its five target set types for comparison. 
+#my_plot <-
+ggplot() +
+#  geom_point(data = data2z_agg_hlhzc, 
+#             aes(x = point, 
+#                 y = mean.hlhzc,
+#                 colour = target
+#                 )) + 
+   geom_path(data = data2z_agg_hlhzc, 
+             aes(x = point, 
+                 y = mean.hlhzc, 
+#                linewidth = number,
+                 linetype = target,
+                 group = target),
+             alpha = 0.5) +
+  geom_point(data = data2z_sm_all_au_both_agg_copy_hlhzc_exp, 
+              aes(x = point, 
+                  y = mean.hlhzc,
+                  colour = analysis_1,
+                  ),
+              alpha = 0.5,
+                show.legend = FALSE) + 
+  geom_path(data = data2z_sm_all_au_both_agg_copy_hlhzc_exp, 
+              aes(x = point, 
+                  y = mean.hlhzc, 
+#                 linewidth = number,
+                  group = analysis_1,
+                  colour = analysis_1),
+              alpha = 0.5,
+#              show.legend = FALSE
+) +
+  geom_point(data = data2z_sm_all_au_both_agg_copy_hlhzc_control_I, 
+              aes(x = point, 
+                  y = mean.hlhzc,
+                  colour = analysis_1
+                  ),
+              alpha = 0.5,
+                show.legend = FALSE) + 
+  geom_path(data = data2z_sm_all_au_both_agg_copy_hlhzc_control_I,               
+            aes(x = point, 
+                  y = mean.hlhzc, 
+#                 linewidth = number,
+                  group = analysis_1,
+                  colour = analysis_1),
+              alpha = 0.5,
+#              show.legend = FALSE
+) + 
+  geom_point(data = data2z_sm_all_au_both_agg_copy_hlhzc_control_II, 
+              aes(x = point, 
+                  y = mean.hlhzc,
+                  colour = analysis_1
+                  ),
+              alpha = 0.5,
+                show.legend = FALSE) + 
+  geom_path(data = data2z_sm_all_au_both_agg_copy_hlhzc_control_II, 
+              aes(x = point, 
+                  y = mean.hlhzc, 
+#                 linewidth = number,
+                  group = analysis_1,
+                  colour = analysis_1),
+              alpha = 0.5,
+#              show.legend = FALSE
+) +
+  geom_text_repel(data = data2z_sm_all_au_both_agg_copy_hlhzc_mod,
+                aes(x = point,
+                    y = mean.hlhzc,
+                    label = target,
+                    group = target
+                    ),
+                max.overlaps = Inf,
+                size = 3,
+                show.legend = FALSE) +
+#  scale_y_continuous(expand = c(0, 0.5), 
+#                     breaks = (c(0, 2, 4, 6, 8, 10, 12, 14)), 
+#                     limits = c(0, 14)) +
+#  scale_colour_discrete(labels = c("Aspirated", "Unaspirated", "Unsure")) +
+  scale_colour_manual(values = c("Aspirated" = "red", "Unaspirated" = "darkgreen")) +
+  scale_linetype_discrete(labels = c("Aspirate set I", "Aspirate set II", "Experimental set", "Unaspirate set I", "Unaspirate set II")) +
+  labs(x = "\n Point over vowel",
+       y = "Mean H1⋆-H2⋆ slope (db)\n",
+       title = expression("Mean spectral balance over C"[1]*"V of tokens with unanimous perceptual categorization"),
+       color = "Perception category\n"
+       ,
+       linetype = "Target set type\n"
+       )
+
+```
+
+
+ggsave("C:/Users/ALI/OneDrive/Documents/611 perception_unanimous_h1-h2.png", my_plot, width = 9, height = 6, bg = "white")
+
+
+
+```{r visualisation of H1-A3 over C1V by `unanimous' perception outcomes}
+
+##We start again with the same data.
+#view(data2z_sm_all_au_both_agg_copy)
+
+##We select the relevant columns and we pivot_longer. 
+data2z_sm_all_au_both_agg_copy_hlaec <-  
+  data2z_sm_all_au_both_agg_copy %>% 
+  select(target, 
+         analysis_1,
+         mean.hlaec_1, mean.hlaec_2, mean.hlaec_3, mean.hlaec_4, mean.hlaec_5) %>%
+  pivot_longer(cols = c(mean.hlaec_1, mean.hlaec_2, mean.hlaec_3, mean.hlaec_4, mean.hlaec_5),
+               names_to = 'point', 
+               values_to = 'mean.hlaec')
+
+#view(data2z_sm_all_au_both_agg_copy_hlaec)
+
+##We remove the "mean.hlaec_" part.
+data2z_sm_all_au_both_agg_copy_hlaec$point <- gsub('mean.hlaec_', '', 
+                          data2z_sm_all_au_both_agg_copy_hlaec$point)
+
+#view(data2z_sm_all_au_both_agg_copy_hlaec)
+
+
+##We create a copy of the data and in it filter "point 1" and "point 5".
+data2z_sm_all_au_both_agg_copy_hlaec_mod <-  
+  data2z_sm_all_au_both_agg_copy_hlaec %>%
+  filter(point %in%  c("1", "5"))
+
+#view(data2z_sm_all_au_both_agg_copy_hlaec_mod)
+
+
+##We create subsets of 'data2z_sm_all_au_both_agg_copy_hlaec' by its target groups. 
+data2z_sm_all_au_both_agg_copy_hlaec_exp <- 
+  data2z_sm_all_au_both_agg_copy_hlaec %>%
+  filter(target == "exp.")
+
+#view(data2z_sm_all_au_both_agg_copy_hlaec_exp)
+
+data2z_sm_all_au_both_agg_copy_hlaec_control_I <-  
+  data2z_sm_all_au_both_agg_copy_hlaec %>%
+  filter(target == "group I")
+
+#view(data2z_sm_all_au_both_agg_copy_hlaec_control_I)
+
+data2z_sm_all_au_both_agg_copy_hlaec_control_II <-  
+  data2z_sm_all_au_both_agg_copy_hlaec %>%
+  filter(target == "group II")
+
+#view(data2z_sm_all_au_both_agg_copy_hlaec_control_II)
+
+
+##We then plot H1-A3 outcomes of perception (along with the five target set types).
+#my_plot <-
+ggplot() +
+#  geom_point(data = data2z_agg_hlaec, 
+#             aes(x = point, 
+#                 y = mean.hlaec,
+#                 colour = target
+#                 )) + 
+   geom_path(data = data2z_agg_hlaec, 
+             aes(x = point, 
+                 y = mean.hlaec, 
+#                linewidth = number,
+                 linetype = target,
+                 group = target),
+             alpha = 0.5) +
+  geom_point(data = data2z_sm_all_au_both_agg_copy_hlaec_exp, 
+              aes(x = point, 
+                  y = mean.hlaec,
+                  colour = analysis_1,
+                  ),
+              alpha = 0.5,
+                show.legend = FALSE) + 
+  geom_path(data = data2z_sm_all_au_both_agg_copy_hlaec_exp, 
+              aes(x = point, 
+                  y = mean.hlaec, 
+#                 linewidth = number,
+                  group = analysis_1,
+                  colour = analysis_1),
+              alpha = 0.5,
+#              show.legend = FALSE
+) +
+  geom_point(data = data2z_sm_all_au_both_agg_copy_hlaec_control_I, 
+              aes(x = point, 
+                  y = mean.hlaec,
+                  colour = analysis_1
+                  ),
+              alpha = 0.5,
+                show.legend = FALSE) + 
+  geom_path(data = data2z_sm_all_au_both_agg_copy_hlaec_control_I,               
+            aes(x = point, 
+                  y = mean.hlaec, 
+#                 linewidth = number,
+                  group = analysis_1,
+                  colour = analysis_1),
+              alpha = 0.5,
+#              show.legend = FALSE
+) + 
+  geom_point(data = data2z_sm_all_au_both_agg_copy_hlaec_control_II, 
+              aes(x = point, 
+                  y = mean.hlaec,
+                  colour = analysis_1
+                  ),
+              alpha = 0.5,
+                show.legend = FALSE) + 
+  geom_path(data = data2z_sm_all_au_both_agg_copy_hlaec_control_II, 
+              aes(x = point, 
+                  y = mean.hlaec, 
+#                 linewidth = number,
+                  group = analysis_1,
+                  colour = analysis_1),
+              alpha = 0.5,
+#              show.legend = FALSE
+) +
+  geom_text_repel(data = data2z_sm_all_au_both_agg_copy_hlaec_mod,
+                aes(x = point,
+                    y = mean.hlaec,
+                    label = target,
+                    group = target
+                    ),
+                max.overlaps = Inf,
+                size = 3,
+                show.legend = FALSE) +
+#  scale_y_continuous(expand = c(0, 1.0), 
+#                     breaks = (c(25, 30, 35, 40, 45)), 
+#                     limits = c(25, 45)) +
+#  scale_colour_discrete(labels = c("Aspirated", "Unaspirated", "Unsure")) +
+  scale_colour_manual(values = c("Aspirated" = "red", "Unaspirated" = "darkgreen")) +
+  scale_linetype_discrete(labels = c("Aspirate set I", "Aspirate set II", "Experimental set", "Unaspirate set I", "Unaspirate set II")) +
+  labs(x = "\n Point over vowel",
+       y = "Mean H1⋆-A3⋆ tilt (db)\n",
+       title = expression("Mean spectral balance over C"[1]*"V of tokens with unanimous perceptual categorization"),
+       color = "Perception category\n"
+       ,
+       linetype = "Target set type\n"
+       )
+
+
+```
+
+
+ggsave("C:/Users/ALI/OneDrive/Documents/621 perception_unanimous_h1-a3.png", my_plot, width = 9, height = 6, bg = "white")
+
+
+
+```{r visualisation of CPP over C1V by `unanimous' perception outcomes}
+
+#view(data2z_sm_all_au_both_agg_copy)
+
+##Again, use the relevant columns with 'select' and pivot_longer. 
+data2z_sm_all_au_both_agg_copy_cpp <-  
+  data2z_sm_all_au_both_agg_copy %>% 
+  select(target, 
+         analysis_1,
+         mean.cpp_1, mean.cpp_2, mean.cpp_3, mean.cpp_4, mean.cpp_5) %>%
+  pivot_longer(cols = c(mean.cpp_1, mean.cpp_2, mean.cpp_3, mean.cpp_4, mean.cpp_5),
+               names_to = 'point', 
+               values_to = 'mean.cpp')
+
+#view(data2z_sm_all_au_both_agg_copy_cpp)
+
+##Remove the "mean.cpp_" part.
+data2z_sm_all_au_both_agg_copy_cpp$point <- gsub('mean.cpp_', '', 
+                          data2z_sm_all_au_both_agg_copy_cpp$point)
+
+#view(data2z_sm_all_au_both_agg_copy_cpp)
+
+
+##Create a copy of the filtering "point 1" and "point 5".
+data2z_sm_all_au_both_agg_copy_cpp_mod <-  
+  data2z_sm_all_au_both_agg_copy_cpp %>%
+  filter(point %in%  c("1", "5"))
+
+#view(data2z_sm_all_au_both_agg_copy_cpp_mod)
+
+
+##Create subsets of each target group from 'data2z_sm_all_au_both_agg_copy_cpp'. 
+data2z_sm_all_au_both_agg_copy_cpp_exp <-  
+  data2z_sm_all_au_both_agg_copy_cpp %>%
+  filter(target == "exp.")
+
+#view(data2z_sm_all_au_both_agg_copy_cpp_exp)
+
+data2z_sm_all_au_both_agg_copy_cpp_control_I <-  
+  data2z_sm_all_au_both_agg_copy_cpp %>%
+  filter(target == "group I")
+
+#view(data2z_sm_all_au_both_agg_copy_cpp_control_I)
+
+data2z_sm_all_au_both_agg_copy_cpp_control_II <-  
+  data2z_sm_all_au_both_agg_copy_cpp %>%
+  filter(target == "group II")
+
+#view(data2z_sm_all_au_both_agg_copy_cpp_control_II)
+
+
+##Produce the CPP plot (with the target set types embedded).
+#my_plot <-
+ggplot() +
+#  geom_point(data = data2z_agg_cpp, 
+#             aes(x = point, 
+#                 y = mean.cpp,
+#                 colour = target
+#                 )) + 
+   geom_path(data = data2z_agg_cpp, 
+             aes(x = point, 
+                 y = mean.cpp, 
+#                linewidth = number,
+                 linetype = target,
+                 group = target),
+             alpha = 0.5) +
+  geom_point(data = data2z_sm_all_au_both_agg_copy_cpp_exp, 
+              aes(x = point, 
+                  y = mean.cpp,
+                  colour = analysis_1,
+                  ),
+              alpha = 0.5,
+                show.legend = FALSE) + 
+  geom_path(data = data2z_sm_all_au_both_agg_copy_cpp_exp, 
+              aes(x = point, 
+                  y = mean.cpp, 
+#                 linewidth = number,
+                  group = analysis_1,
+                  colour = analysis_1),
+              alpha = 0.5,
+#              show.legend = FALSE
+) +
+  geom_point(data = data2z_sm_all_au_both_agg_copy_cpp_control_I, 
+              aes(x = point, 
+                  y = mean.cpp,
+                  colour = analysis_1
+                  ),
+              alpha = 0.5,
+                show.legend = FALSE) + 
+  geom_path(data = data2z_sm_all_au_both_agg_copy_cpp_control_I,               
+            aes(x = point, 
+                  y = mean.cpp, 
+#                 linewidth = number,
+                  group = analysis_1,
+                  colour = analysis_1),
+              alpha = 0.5,
+#              show.legend = FALSE
+) + 
+  geom_point(data = data2z_sm_all_au_both_agg_copy_cpp_control_II, 
+              aes(x = point, 
+                  y = mean.cpp,
+                  colour = analysis_1
+                  ),
+              alpha = 0.5,
+                show.legend = FALSE) + 
+  geom_path(data = data2z_sm_all_au_both_agg_copy_cpp_control_II, 
+              aes(x = point, 
+                  y = mean.cpp, 
+#                 linewidth = number,
+                  group = analysis_1,
+                  colour = analysis_1),
+              alpha = 0.5,
+#              show.legend = FALSE
+) +
+  geom_text_repel(data = data2z_sm_all_au_both_agg_copy_cpp_mod,
+                aes(x = point,
+                    y = mean.cpp,
+                    label = target,
+                    group = target
+                    ),
+                max.overlaps = Inf,
+                size = 3,
+                show.legend = FALSE) +
+#  scale_y_continuous(expand = c(0, 1.0), 
+#                     breaks = (c(10, 12, 14, 16, 18, 20, 22)), 
+#                     limits = c(10, 22)) +
+#  scale_colour_discrete(labels = c("Aspirated", "Unaspirated", "Unsure")) +
+  scale_colour_manual(values = c("Aspirated" = "red", "Unaspirated" = "darkgreen")) +
+  scale_linetype_discrete(labels = c("Aspirate set I", "Aspirate set II", "Experimental set", "Unaspirate set I", "Unaspirate set II")) +
+  labs(x = "\n Point over vowel",
+       y = "Mean cepstral peak prominence\n",
+       title = expression("Mean harmonicity over C"[1]*"V of tokens with unanimous perceptual categorization"),
+       color = "Perception category\n"
+       ,
+       linetype = "Target set type\n"
+       )
+
+
+```
+
+
+ggsave("C:/Users/ALI/OneDrive/Documents/631 perception_unanimous_cpp.png", my_plot, width = 9, height = 6, bg = "white")
+
+
+
+```{r visualisation of pitch over C1V by `unanimous' perception outcomes}
+
+#view(data2z_sm_all_au_both_agg_copy)
+
+##Yet again, doing 'select' to use the relevant columns and doing pivot_longer. 
+data2z_sm_all_au_both_agg_copy_pitch <-  
+  data2z_sm_all_au_both_agg_copy %>% 
+  select(target, 
+         analysis_1,
+         mean.pitch_1, mean.pitch_2, mean.pitch_3, mean.pitch_4, mean.pitch_5) %>%
+  pivot_longer(cols = c(mean.pitch_1, mean.pitch_2, mean.pitch_3, mean.pitch_4, mean.pitch_5),
+               names_to = 'point', 
+               values_to = 'mean.pitch')
+
+#view(data2z_sm_all_au_both_agg_copy_pitch)
+
+##Removing "mean.pitch_".
+data2z_sm_all_au_both_agg_copy_pitch$point <- gsub('mean.pitch_', '', 
+                          data2z_sm_all_au_both_agg_copy_pitch$point)
+
+#view(data2z_sm_all_au_both_agg_copy_pitch)
+
+
+##Creating a copy of the data, filtering "point 1" and "point 5".
+data2z_sm_all_au_both_agg_copy_pitch_mod <-  
+  data2z_sm_all_au_both_agg_copy_pitch %>%
+  filter(point %in%  c("1", "5"))
+
+#view(data2z_sm_all_au_both_agg_copy_pitch_mod)
+
+
+##Creating subsets from 'data2z_sm_all_au_both_agg_copy_pitch' of the target groups. 
+data2z_sm_all_au_both_agg_copy_pitch_exp <-  
+  data2z_sm_all_au_both_agg_copy_pitch %>%
+  filter(target == "exp.")
+
+#view(data2z_sm_all_au_both_agg_copy_pitch_exp)
+
+data2z_sm_all_au_both_agg_copy_pitch_control_I <-  
+  data2z_sm_all_au_both_agg_copy_pitch %>%
+  filter(target == "group I")
+
+#view(data2z_sm_all_au_both_agg_copy_pitch_control_I)
+
+data2z_sm_all_au_both_agg_copy_pitch_control_II <-  
+  data2z_sm_all_au_both_agg_copy_pitch %>%
+  filter(target == "group II")
+
+#view(data2z_sm_all_au_both_agg_copy_pitch_control_II)
+
+
+##Finally, producing the pitch plot (embedding in it the five target sets).
+#my_plot <-
+ggplot() +
+#  geom_point(data = data2z_agg_pitch, 
+#             aes(x = point, 
+#                 y = mean.pitch,
+#                 colour = target
+#                 )) + 
+   geom_path(data = data2z_agg_pitch, 
+             aes(x = point, 
+                 y = mean.pitch, 
+#                linewidth = number,
+                 linetype = target,
+                 group = target),
+             alpha = 0.5) +
+  geom_point(data = data2z_sm_all_au_both_agg_copy_pitch_exp, 
+              aes(x = point, 
+                  y = mean.pitch,
+                  colour = analysis_1,
+                  ),
+              alpha = 0.5,
+                show.legend = FALSE) + 
+  geom_path(data = data2z_sm_all_au_both_agg_copy_pitch_exp, 
+              aes(x = point, 
+                  y = mean.pitch, 
+#                 linewidth = number,
+                  group = analysis_1,
+                  colour = analysis_1),
+              alpha = 0.5,
+#              show.legend = FALSE
+) +
+  geom_point(data = data2z_sm_all_au_both_agg_copy_pitch_control_I, 
+              aes(x = point, 
+                  y = mean.pitch,
+                  colour = analysis_1
+                  ),
+              alpha = 0.5,
+                show.legend = FALSE) + 
+  geom_path(data = data2z_sm_all_au_both_agg_copy_pitch_control_I,               
+            aes(x = point, 
+                  y = mean.pitch, 
+#                 linewidth = number,
+                  group = analysis_1,
+                  colour = analysis_1),
+              alpha = 0.5,
+#              show.legend = FALSE
+) + 
+  geom_point(data = data2z_sm_all_au_both_agg_copy_pitch_control_II, 
+              aes(x = point, 
+                  y = mean.pitch,
+                  colour = analysis_1
+                  ),
+              alpha = 0.5,
+                show.legend = FALSE) + 
+  geom_path(data = data2z_sm_all_au_both_agg_copy_pitch_control_II, 
+              aes(x = point, 
+                  y = mean.pitch, 
+#                 linewidth = number,
+                  group = analysis_1,
+                  colour = analysis_1),
+              alpha = 0.5,
+#              show.legend = FALSE
+) +
+  geom_text_repel(data = data2z_sm_all_au_both_agg_copy_pitch_mod,
+                aes(x = point,
+                    y = mean.pitch,
+                    label = target,
+                    group = target
+                    ),
+                max.overlaps = Inf,
+                size = 3,
+                show.legend = FALSE) +
+#  scale_y_continuous(expand = c(0, 2), 
+#                     breaks = (c(100, 110, 120, 130, 140, 150)), 
+#                     limits = c(100, 150)) +
+#  scale_colour_discrete(labels = c("Aspirated", "Unaspirated", "Unsure")) +
+  scale_colour_manual(values = c("Aspirated" = "red", "Unaspirated" = "darkgreen")) +
+  scale_linetype_discrete(labels = c("Aspirate set I", "Aspirate set II", "Experimental set", "Unaspirate set I", "Unaspirate set II")) +
+  labs(x = "\n Point over vowel",
+       y = "Mean fundamental frequency (Hz)\n",
+       title = expression("Mean F0 over C"[1]*"V of tokens with unanimous perceptual categorization"),
+       color = "Perception category\n"
+       ,
+       linetype = "Target set type\n"
+       )
+
+
+```
+
+
+ggsave("C:/Users/ALI/OneDrive/Documents/641 perception_unanimous_pitch.png", my_plot, width = 9, height = 6, bg = "white")
+
+
+
+
+
+
