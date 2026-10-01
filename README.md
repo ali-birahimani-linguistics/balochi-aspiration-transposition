@@ -6,7 +6,7 @@ R Markdown scripts and analysis for Documentation of Transposition of Aspiration
 
 # Acoustic Phonetic Analysis: Transposition of Aspiration in Dialectal Balochi
 
-This repository hosts the **R Markdown (`.Rmd`) data wrangling pipelines and acoustic and analytic visualizations** generated for the acoustic phonetic analysis of production and perception data on transposition of aspiration. This project is integrated with the permanent data archive on OSF.
+This repository hosts the **R Markdown (`.Rmd`) data wrangling pipelines** and **acoustic and analytic visualizations** generated for the acoustic phonetic analysis of production and perception data on transposition of aspiration. The project is integrated with the permanent data archive on OSF.
 
 ---
 
@@ -18,7 +18,7 @@ This repository hosts the **R Markdown (`.Rmd`) data wrangling pipelines and aco
 ---
 
 ### Linked Open Science Resources
-* **Permanent Data & Metadata:** The acoustic measurement spreadsheets and the **"Key to terms in the analysis"** metadata sheet are archived at the **[OSF Project Repository](https://osf.io/28ax7/overview)** (Project ID: `28ax7`).
+* **Permanent Data & Metadata:** The **acoustic measurement spreadsheets**, **R Scripts**, and the **"Key to terms in the analysis"** metadata sheet are archived at the **[OSF Project Repository](https://osf.io/28ax7/overview)** (Project ID: `28ax7`).
 * **Associated Monograph:** The doctoral dissertation can be accessed via the [University of Oslo Library Repository](https://bibsys-k.primo.exlibrisgroup.com) or via [External Link](https://www.researchgate.net/publication/405390552).
 
 ---
